@@ -1,18 +1,3 @@
-// 1. Element of a specified type
-// ...
-//   <element name> <element type>
-// ...
-//
-// 2. Element of no type
-// ...
-//   <element name> struct {
-//   }
-// ...
-//
-// type <element name> struct {
-// ...
-// }
-
 package main
 
 import (
@@ -52,19 +37,11 @@ func init() {
 
 func main() {
 	extractXsd(xsdentry)
+	//buildXmlStructs()
+
 	root := buildXmlStructs()
-	//pretty.Println(root)
-	//pretty.Println(root.Children[0])
 	parse(root)
 
-	//fmt.Println("top elements", elements)
-	//generate(rootElem)
-
-	//for _, t := range complTypes {
-	//pretty.Println(t)
-	//}
-
-	//parse()
 }
 
 func extractXsd(fname string) {
@@ -130,6 +107,22 @@ func buildXmlStructs() *xmlElem {
 	return xelem
 }
 
+func buildFromComplexContent(xelem *xmlElem, c complexContent) {
+	if c.Extension != nil {
+		if c.Extension.Sequence != nil {
+			for _, e := range c.Extension.Sequence {
+				xelem.Children = append(xelem.Children, traverse(e))
+			}
+		}
+		base := c.Extension.Base
+		switch t := findType(base).(type) {
+		case complexType:
+			buildFromComplexType(xelem, t)
+		}
+
+	}
+}
+
 func buildFromComplexType(xelem *xmlElem, t complexType) {
 	if t.Sequence != nil {
 		for _, e := range t.Sequence {
@@ -140,6 +133,10 @@ func buildFromComplexType(xelem *xmlElem, t complexType) {
 		for _, a := range t.Attributes {
 			xelem.Attribs = append(xelem.Attribs, xmlAttrib{Name: a.Name})
 		}
+	}
+
+	if t.ComplexContent != nil {
+		buildFromComplexContent(xelem, *t.ComplexContent)
 	}
 }
 
@@ -283,7 +280,8 @@ type complexType struct {
 }
 
 type complexContent struct {
-	Extension extension `xml:"extension"`
+	Extension   *extension   `xml:"extension"`
+	Restriction *restriction `xml:"restriction"`
 }
 
 type simpleContent struct {
