@@ -86,7 +86,7 @@ func separate(props prop) indexProp {
 	return indexProp{Simpl: simpl, Compl: compl}
 }
 
-var fmap = template.FuncMap{
+var fmap2 = template.FuncMap{
 	"title":     func(s string) string { return strings.Title(s) },
 	"isComplex": func(p prop) bool { return p.Props != nil },
 	"type": func(p prop) string {
