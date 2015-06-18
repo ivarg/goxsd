@@ -24,8 +24,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-
-	"github.com/kr/pretty"
 )
 
 var (
@@ -105,7 +103,7 @@ type xmlElem struct {
 	List     bool
 	Value    string
 	Attribs  []xmlAttrib
-	Children []xmlElem
+	Children []*xmlElem
 }
 
 type xmlAttrib struct {
@@ -113,7 +111,7 @@ type xmlAttrib struct {
 	Value string
 }
 
-func buildXmlStructs() xmlElem {
+func buildXmlStructs() *xmlElem {
 	for _, s := range schemas {
 		for _, e := range s.Elements {
 			elements[e.Name] = e
@@ -132,59 +130,58 @@ func buildXmlStructs() xmlElem {
 	return xelem
 }
 
-func traverse(e element) xmlElem {
-	xelem := xmlElem{Name: e.Name}
-
-	// If the element type is external, we need to look it up to see how
-	// to lay out the struct.
-	if e.Name == "event" {
-		pretty.Println(e)
+func buildFromComplexType(xelem *xmlElem, t complexType) {
+	if t.Sequence != nil {
+		for _, e := range t.Sequence {
+			xelem.Children = append(xelem.Children, traverse(e))
+		}
 	}
+	if t.Attributes != nil {
+		for _, a := range t.Attributes {
+			xelem.Attribs = append(xelem.Attribs, xmlAttrib{Name: a.Name})
+		}
+	}
+}
 
+func buildFromElement(xelem *xmlElem, e element) {
+	xelem.Name = e.Name // TODO(ivar): capitalize here instead in template
+	xelem.Type = e.Name
 	if e.Max == "unbounded" {
 		xelem.List = true
 	}
 
-	if e.Type != "" { // external type reference
-		typ := findType(e.Type)
-		// If complex type, we will add children and recursively traverse them
-		switch t := typ.(type) {
+	if e.Type != "" {
+		switch t := findType(e.Type).(type) {
 		case complexType:
-			if t.Sequence != nil {
-				for _, e := range t.Sequence {
-					xelem.Children = append(xelem.Children, traverse(e))
-				}
-			}
-			if t.Attributes != nil {
-				for _, a := range t.Attributes {
-					xelem.Attribs = append(xelem.Attribs, xmlAttrib{Name: a.Name})
-				}
-			}
-			xelem.Type = e.Name
-			// If it is not complex, we must map it to primitive type
+			buildFromComplexType(xelem, t)
 		case simpleType:
-			xelem.Type = stripNamespace(t.Restriction.Base)
+			buildFromSimpleType(xelem, t)
 		default:
+			// If neither complex or simple type, we guess we have a primitive
+			// TODO(ivar): check against XSD types (http://www.w3schools.com/schema/schema_dtypes_string.asp)
 			xelem.Type = stripNamespace(e.Type)
 		}
-		return xelem
+		return
 	}
 
 	if e.ComplexType != nil { // inline complex type
-		if e.ComplexType.Sequence != nil {
-			for _, e := range e.ComplexType.Sequence {
-				xelem.Children = append(xelem.Children, traverse(e))
-			}
-		}
-		return xelem
+		buildFromComplexType(xelem, *e.ComplexType)
+		return
 	}
 
 	if e.SimpleType != nil { // inline simple type
-		xelem.Type = stripNamespace(e.SimpleType.Restriction.Base)
-		return xelem
+		buildFromSimpleType(xelem, *e.SimpleType)
+		return
 	}
+}
 
-	println("ZZZZZZZ NIY")
+func buildFromSimpleType(xelem *xmlElem, t simpleType) {
+	xelem.Type = stripNamespace(t.Restriction.Base)
+}
+
+func traverse(e element) *xmlElem {
+	xelem := &xmlElem{Name: e.Name}
+	buildFromElement(xelem, e)
 	return xelem
 }
 
@@ -217,7 +214,7 @@ var (
 func doparse(root xmlElem) {
 }
 
-func parse(root xmlElem) {
+func parse(root *xmlElem) {
 	fmt.Println()
 	if err := tt.Execute(os.Stdout, root); err != nil {
 		log.Fatal(err)
@@ -276,13 +273,13 @@ type element struct {
 }
 
 type complexType struct {
-	Name           string           `xml:"name,attr"`
-	Abstract       string           `xml:"abstract,attr"`
-	Annotation     string           `xml:"annotation>documentation"`
-	Sequence       []element        `xml:"sequence>element"`
-	ComplexContent []complexContent `xml:"complexContent"`
-	SimpleContent  []simpleContent  `xml:"simpleContent"`
-	Attributes     []attribute      `xml:"attribute"`
+	Name           string          `xml:"name,attr"`
+	Abstract       string          `xml:"abstract,attr"`
+	Annotation     string          `xml:"annotation>documentation"`
+	Sequence       []element       `xml:"sequence>element"`
+	ComplexContent *complexContent `xml:"complexContent"`
+	SimpleContent  *simpleContent  `xml:"simpleContent"`
+	Attributes     []attribute     `xml:"attribute"`
 }
 
 type complexContent struct {
