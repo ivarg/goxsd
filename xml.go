@@ -17,14 +17,13 @@ package main
 
 import (
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
-
-	"github.com/kr/pretty"
 )
 
 var (
@@ -43,11 +42,20 @@ func init() {
 	complTypes = make(map[string]complexType)
 	simplTypes = make(map[string]simpleType)
 	schemas = make(map[string]schema)
+
+	tt = template.New("yyy").Funcs(fmap)
+	tt.Parse(child)
+	tt.Parse(elem)
+	tt.Parse(templ)
+
 }
 
 func main() {
 	extractXsd(xsdentry)
-	buildXmlStructs()
+	root := buildXmlStructs()
+	//pretty.Println(root)
+	//pretty.Println(root.Children[0])
+	parse(root)
 
 	//fmt.Println("top elements", elements)
 	//generate(rootElem)
@@ -117,7 +125,7 @@ func buildXmlStructs() xmlElem {
 
 	rootElem := schemas[rootNs].Elements[0]
 	xelem := traverse(rootElem)
-	pretty.Println(xelem)
+	//pretty.Println(xelem)
 	return xelem
 }
 
@@ -145,6 +153,7 @@ func traverse(e element) xmlElem {
 					xelem.Attribs = append(xelem.Attribs, xmlAttrib{Name: a.Name})
 				}
 			}
+			xelem.Type = e.Name
 			// If it is not complex, we must map it to primitive type
 		case simpleType:
 			xelem.Type = stripNamespace(t.Restriction.Base)
@@ -190,33 +199,33 @@ func findType(name string) interface{} {
 }
 
 var (
-	child = "{{ define \"Child\" }}{{ printf \"  %s %s `xml:\\\"%s\\\"`\" (title .Name) .Name .Name  }}\n{{ end }}"
+	child = "{{ define \"Child\" }}{{ printf \"  %s %s `xml:\\\"%s\\\"`\" (title .Name) .Type .Name  }}\n{{ end }}"
 
-	//elem = "{{ define \"Elem\" }}{{ printf \" %s %s `xml:\\\"%s\\\"`\" (title .Name) (stripNs .Type) (stripNs .Type) }}\n{{ end }}"
-	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" (title .Name) (stripNs .Type) }}{{ end }}`
-
-	simple = `{{ define "Simple" }}{{ printf "type %s %s \n" .Name (stripNs .Restriction.Base) }}{{ end }}`
-
-	complx = `{{ define "Complex" }}{{ printf "type %s struct {\n" .Name }}{{ range $e := .Sequence }}{{ template "Elem" $e }}{{ end }}
-}
+	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" .Name }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }}}
 {{ end }}`
 
-	templ = `{{ range $t := . }}{{ template "Complex" $t }}{{ end }}`
+	templ = `{{ template "Elem" . }}`
 
 	fmap = template.FuncMap{
-		"stripNs": stripNamespace,
-		"title":   strings.Title,
+		//"stripNs": stripNamespace,
+		"title": strings.Title,
 	}
+
+	tt *template.Template
 )
 
-func parse() {
-	tt := template.New("yyy").Funcs(fmap)
-	tt.Parse(elem)
-	tt.Parse(simple)
-	tt.Parse(complx)
-	tt.Parse(templ)
-	if err := tt.Execute(os.Stdout, complTypes); err != nil {
+func doparse(root xmlElem) {
+}
+
+func parse(root xmlElem) {
+	fmt.Println()
+	if err := tt.Execute(os.Stdout, root); err != nil {
 		log.Fatal(err)
+	}
+	for _, e := range root.Children {
+		if e.Children != nil {
+			parse(e)
+		}
 	}
 }
 
