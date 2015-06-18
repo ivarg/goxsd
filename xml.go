@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"github.com/kr/pretty"
 )
 
 var (
@@ -100,6 +102,7 @@ func extractXsd(fname string) {
 type xmlElem struct {
 	Name     string
 	Type     string
+	List     bool
 	Value    string
 	Attribs  []xmlAttrib
 	Children []xmlElem
@@ -130,21 +133,25 @@ func buildXmlStructs() xmlElem {
 }
 
 func traverse(e element) xmlElem {
-	//fmt.Println("traversing", e.Name)
 	xelem := xmlElem{Name: e.Name}
 
 	// If the element type is external, we need to look it up to see how
 	// to lay out the struct.
+	if e.Name == "event" {
+		pretty.Println(e)
+	}
+
+	if e.Max == "unbounded" {
+		xelem.List = true
+	}
+
 	if e.Type != "" { // external type reference
 		typ := findType(e.Type)
-		//fmt.Println(typ)
 		// If complex type, we will add children and recursively traverse them
 		switch t := typ.(type) {
 		case complexType:
 			if t.Sequence != nil {
-				//fmt.Println("children:")
 				for _, e := range t.Sequence {
-					//fmt.Println("  ", e.Name, e.Type)
 					xelem.Children = append(xelem.Children, traverse(e))
 				}
 			}
@@ -157,24 +164,18 @@ func traverse(e element) xmlElem {
 			// If it is not complex, we must map it to primitive type
 		case simpleType:
 			xelem.Type = stripNamespace(t.Restriction.Base)
-		case string:
-			println("YYYYY NIY")
 		default:
-			panic("unknown type: " + typ.(string))
+			xelem.Type = stripNamespace(e.Type)
 		}
-		//pretty.Println(xelem)
 		return xelem
 	}
 
 	if e.ComplexType != nil { // inline complex type
 		if e.ComplexType.Sequence != nil {
-			//fmt.Println("children:")
 			for _, e := range e.ComplexType.Sequence {
-				//fmt.Println("  ", e.Name, e.Type)
 				xelem.Children = append(xelem.Children, traverse(e))
 			}
 		}
-		//pretty.Println(xelem)
 		return xelem
 	}
 
@@ -199,15 +200,14 @@ func findType(name string) interface{} {
 }
 
 var (
-	child = "{{ define \"Child\" }}{{ printf \"  %s %s `xml:\\\"%s\\\"`\" (title .Name) .Type .Name  }}\n{{ end }}"
-
-	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" .Name }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }}}
+	//
+	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" .Name .Name }}\n{{ end }}"
+	elem  = `{{ define "Elem" }}{{ printf "type %s struct {\n" .Name }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }}}
 {{ end }}`
 
 	templ = `{{ template "Elem" . }}`
 
 	fmap = template.FuncMap{
-		//"stripNs": stripNamespace,
 		"title": strings.Title,
 	}
 
