@@ -2,46 +2,66 @@ package main
 
 import (
 	"encoding/xml"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-// extractXsd decodes the xsd into Go structs, recursively following imports
-func extractXsd(fname string) {
-	// TODO(ivar): check if this file has already been extracted
-	loc := filepath.Join(xsdpath, fname)
-	f, err := os.Open(loc)
-	if err != nil {
-		log.Println("Error: could not open", loc)
-		return
-	}
-	defer f.Close()
-	buf, err := ioutil.ReadAll(f)
-	if err != nil {
-		log.Println("Error: could not read", loc)
-		return
-	}
-	var root schema
-	if err := xml.Unmarshal(buf, &root); err != nil {
-		log.Println("Error: could not unmarshal", loc)
-		return
-	}
+var (
+	set map[string]struct{}
+)
 
-	if _, ok := schemas[root.ns()]; ok {
-		return
+func extractXsd(fname string) ([]xsdSchema, error) {
+	schemas := make([]xsdSchema, 0, 10)
+	set = make(map[string]struct{})
+	schemas, err := extractAll(fname)
+	if err != nil {
+		return nil, err
 	}
-
-	//log.Println("Decoded", fname)
-	schemas[root.ns()] = root
-	for _, imp := range root.Imports {
-		extractXsd(imp.Location)
-	}
+	return schemas, nil
 }
 
-type schema struct {
+func extractAll(fname string) ([]xsdSchema, error) {
+	f, err := os.Open(fname)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	schema, err := extract(f)
+	if err != nil {
+		return nil, err
+	}
+
+	schemas := []xsdSchema{schema}
+	dir, file := filepath.Split(fname)
+	set[file] = struct{}{}
+	for _, imp := range schema.Imports {
+		if _, ok := set[imp.Location]; ok {
+			continue
+		}
+		s, err := extractAll(filepath.Join(dir, imp.Location))
+		if err != nil {
+			return nil, err
+		}
+		schemas = append(schemas, s...)
+	}
+	return schemas, nil
+}
+
+func extract(r io.Reader) (xsdSchema, error) {
+	var root xsdSchema
+	if err := xml.NewDecoder(r).Decode(&root); err != nil {
+		log.Println("Error: could not decode")
+		return xsdSchema{}, err
+	}
+
+	return root, nil
+}
+
+type xsdSchema struct {
 	XMLName      xml.Name
 	Ns           string        `xml:"xmlns,attr"`
 	Imports      []nsimport    `xml:"import"`
@@ -52,7 +72,7 @@ type schema struct {
 
 // ns parses the namespace from a value in the expected format
 // http://host/namespace/v1
-func (s schema) ns() string {
+func (s xsdSchema) ns() string {
 	split := strings.Split(s.Ns, "/")
 	if len(split) > 2 {
 		return split[len(split)-2]
