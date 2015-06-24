@@ -10,12 +10,12 @@ import (
 )
 
 var (
-	set map[string]struct{}
+	extracted map[string]struct{}
 )
 
 func extractXsd(fname string) ([]xsdSchema, error) {
 	schemas := make([]xsdSchema, 0, 10)
-	set = make(map[string]struct{})
+	extracted = make(map[string]struct{})
 	schemas, err := extractAll(fname)
 	if err != nil {
 		return nil, err
@@ -37,9 +37,9 @@ func extractAll(fname string) ([]xsdSchema, error) {
 
 	schemas := []xsdSchema{schema}
 	dir, file := filepath.Split(fname)
-	set[file] = struct{}{}
+	extracted[file] = struct{}{}
 	for _, imp := range schema.Imports {
-		if _, ok := set[imp.Location]; ok {
+		if _, ok := extracted[imp.Location]; ok {
 			continue
 		}
 		s, err := extractAll(filepath.Join(dir, imp.Location))
