@@ -142,18 +142,19 @@ func (b builder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
 		}
 		// has always a base type
 
-		child := &xmlElem{Name: xelem.Name, Cdata: true}
+		var child *xmlElem
 		switch t := b.findType(c.Extension.Base).(type) {
 		case xsdComplexType:
 			b.buildFromComplexType(xelem, t)
 		case xsdSimpleType:
+			child = &xmlElem{Name: xelem.Name, Cdata: true}
 			buildFromSimpleType(child, t)
-			//default:
-			//if len(child.Attribs) == 0 {
-			//child.Type = typeFromXsdType(t.(string))
-			//}
+			xelem.Children = []*xmlElem{child}
+		default:
+			child = &xmlElem{Name: xelem.Name, Cdata: true}
+			child.Type = typeFromXsdType(t.(string))
+			xelem.Children = []*xmlElem{child}
 		}
-		xelem.Children = append(xelem.Children, child)
 	}
 
 	if c.Restriction != nil {
@@ -164,7 +165,7 @@ func (b builder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
 			buildFromSimpleType(xelem, t)
 		default:
 			xelem.Type = typeFromXsdType(t.(string))
-			addAttributes(xelem, c.Extension.Attributes)
+			//addAttributes(xelem, c.Extension.Attributes)
 		}
 	}
 }
