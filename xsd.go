@@ -63,11 +63,11 @@ func extract(r io.Reader) (xsdSchema, error) {
 
 type xsdSchema struct {
 	XMLName      xml.Name
-	Ns           string        `xml:"xmlns,attr"`
-	Imports      []nsimport    `xml:"import"`
-	Elements     []element     `xml:"element"`
-	ComplexTypes []complexType `xml:"complexType"`
-	SimpleTypes  []simpleType  `xml:"simpleType"`
+	Ns           string           `xml:"xmlns,attr"`
+	Imports      []xsdImport      `xml:"import"`
+	Elements     []xsdElement     `xml:"element"`
+	ComplexTypes []xsdComplexType `xml:"complexType"`
+	SimpleTypes  []xsdSimpleType  `xml:"simpleType"`
 }
 
 // ns parses the namespace from a value in the expected format
@@ -80,70 +80,70 @@ func (s xsdSchema) ns() string {
 	return ""
 }
 
-type nsimport struct {
+type xsdImport struct {
 	Location string `xml:"schemaLocation,attr"`
 }
 
-type element struct {
-	Name        string       `xml:"name,attr"`
-	Type        string       `xml:"type,attr"`
-	Default     string       `xml:"default,attr"`
-	Min         string       `xml:"minOccurs,attr"`
-	Max         string       `xml:"maxOccurs,attr"`
-	Annotation  string       `xml:"annotation>documentation"`
-	ComplexType *complexType `xml:"complexType"` // inline complex type
-	SimpleType  *simpleType  `xml:"simpleType"`  // inline simple type
+type xsdElement struct {
+	Name        string          `xml:"name,attr"`
+	Type        string          `xml:"type,attr"`
+	Default     string          `xml:"default,attr"`
+	Min         string          `xml:"minOccurs,attr"`
+	Max         string          `xml:"maxOccurs,attr"`
+	Annotation  string          `xml:"annotation>documentation"`
+	ComplexType *xsdComplexType `xml:"complexType"` // inline complex type
+	SimpleType  *xsdSimpleType  `xml:"simpleType"`  // inline simple type
 }
 
-type complexType struct {
-	Name           string          `xml:"name,attr"`
-	Abstract       string          `xml:"abstract,attr"`
-	Annotation     string          `xml:"annotation>documentation"`
-	Sequence       []element       `xml:"sequence>element"`
-	Attributes     []attribute     `xml:"attribute"`
-	ComplexContent *complexContent `xml:"complexContent"`
-	SimpleContent  *simpleContent  `xml:"simpleContent"`
+type xsdComplexType struct {
+	Name           string             `xml:"name,attr"`
+	Abstract       string             `xml:"abstract,attr"`
+	Annotation     string             `xml:"annotation>documentation"`
+	Sequence       []xsdElement       `xml:"sequence>element"`
+	Attributes     []xsdAttribute     `xml:"attribute"`
+	ComplexContent *xsdComplexContent `xml:"complexContent"`
+	SimpleContent  *xsdSimpleContent  `xml:"simpleContent"`
 }
 
-type complexContent struct {
-	Extension   *extension   `xml:"extension"`
-	Restriction *restriction `xml:"restriction"`
+type xsdComplexContent struct {
+	Extension   *xsdExtension   `xml:"extension"`
+	Restriction *xsdRestriction `xml:"restriction"`
 }
 
-type simpleContent struct {
-	Extension   *extension   `xml:"extension"`
-	Restriction *restriction `xml:"restriction"`
+type xsdSimpleContent struct {
+	Extension   *xsdExtension   `xml:"extension"`
+	Restriction *xsdRestriction `xml:"restriction"`
 }
 
-type extension struct {
-	Base       string      `xml:"base,attr"`
-	Attributes []attribute `xml:"attribute"`
-	Sequence   []element   `xml:"sequence>element"`
+type xsdExtension struct {
+	Base       string         `xml:"base,attr"`
+	Attributes []xsdAttribute `xml:"attribute"`
+	Sequence   []xsdElement   `xml:"sequence>element"`
 }
 
-type attribute struct {
+type xsdAttribute struct {
 	Name       string `xml:"name,attr"`
 	Type       string `xml:"type,attr"`
 	Use        string `xml:"use,attr"`
 	Annotation string `xml:"annotation>documentation"`
 }
 
-type simpleType struct {
-	Name        string      `xml:"name,attr"`
-	Annotation  string      `xml:"annotation>documentation"`
-	Restriction restriction `xml:"restriction"`
+type xsdSimpleType struct {
+	Name        string         `xml:"name,attr"`
+	Annotation  string         `xml:"annotation>documentation"`
+	Restriction xsdRestriction `xml:"restriction"`
 }
 
-type restriction struct {
-	Base        string        `xml:"base,attr"`
-	Pattern     pattern       `xml:"pattern"`
-	Enumeration []enumeration `xml:"enumeration"`
+type xsdRestriction struct {
+	Base        string           `xml:"base,attr"`
+	Pattern     xsdPattern       `xml:"pattern"`
+	Enumeration []xsdEnumeration `xml:"enumeration"`
 }
 
-type pattern struct {
+type xsdPattern struct {
 	Value string `xml:"value,attr"`
 }
 
-type enumeration struct {
+type xsdEnumeration struct {
 	Value string `xml:"value,attr"`
 }
