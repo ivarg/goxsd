@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -13,6 +14,21 @@ import (
 
 var (
 	xsdFile string
+	usage   = `Usage:
+
+  goxsd <xsd>
+
+Arguments:
+
+  xsd     Path to a valid XSD file
+
+goxsd is a tool for generating XML decoding Go structs, according to an XSD
+schema.
+
+The argument is expected to be the path to a valid XSD schema file. Any import
+statements in that file will be be followed and parsed. The resulting set of
+Go structs will be printed on stdout.
+`
 )
 
 func main() {
@@ -20,15 +36,15 @@ func main() {
 	flag.Parse()
 
 	if xsdFile == "" {
-		flag.Usage()
+		fmt.Println(usage)
 		os.Exit(1)
 	}
 
-	xsd, err := extractXsd(xsdFile)
+	s, err := extractSchemas(xsdFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	builder := newXmlBuilder(xsd)
+	builder := newXmlBuilder(s)
 	parse(os.Stdout, builder.buildXml())
 }
 

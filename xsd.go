@@ -13,7 +13,7 @@ var (
 	extracted map[string]struct{}
 )
 
-func extractXsd(fname string) ([]xsdSchema, error) {
+func extractSchemas(fname string) ([]xsdSchema, error) {
 	schemas := make([]xsdSchema, 0, 10)
 	extracted = make(map[string]struct{})
 	schemas, err := extractAll(fname)
