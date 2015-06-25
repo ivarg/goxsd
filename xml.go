@@ -5,7 +5,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -13,8 +12,7 @@ import (
 )
 
 var (
-	xsdFile string
-	usage   = `Usage:
+	usage = `Usage:
 
   goxsd <xsd>
 
@@ -32,19 +30,17 @@ Go structs will be printed on stdout.
 )
 
 func main() {
-	flag.StringVar(&xsdFile, "xsd", "", "Path to an XSD file")
-	flag.Parse()
-
-	if xsdFile == "" {
+	if len(os.Args) != 2 {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
+	xsdFile := os.Args[1]
 
 	s, err := extractSchemas(xsdFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	builder := newXmlBuilder(s)
+	builder := newBuilder(s)
 	parse(os.Stdout, builder.buildXml())
 }
 
@@ -52,7 +48,7 @@ type xmlElem struct {
 	Name     string
 	Type     string
 	List     bool
-	Value    string
+	Cdata    bool
 	Attribs  []xmlAttrib
 	Children []*xmlElem
 }
@@ -62,21 +58,21 @@ type xmlAttrib struct {
 	Type string
 }
 
-type xmlBuilder struct {
+type builder struct {
 	schemas    []xsdSchema
 	complTypes map[string]xsdComplexType
 	simplTypes map[string]xsdSimpleType
 }
 
-func newXmlBuilder(s []xsdSchema) xmlBuilder {
-	return xmlBuilder{
+func newBuilder(s []xsdSchema) builder {
+	return builder{
 		schemas:    s,
 		complTypes: make(map[string]xsdComplexType),
 		simplTypes: make(map[string]xsdSimpleType),
 	}
 }
 
-func (b xmlBuilder) buildXml() []*xmlElem {
+func (b builder) buildXml() []*xmlElem {
 	var roots []xsdElement
 	for _, s := range b.schemas {
 		for _, e := range s.Elements {
@@ -92,17 +88,17 @@ func (b xmlBuilder) buildXml() []*xmlElem {
 
 	var xelems []*xmlElem
 	for _, e := range roots {
-		xelems = append(xelems, b.traverse(e))
+		xelems = append(xelems, b.buildFromElement(e))
 	}
 
 	return xelems
 }
 
-func (b xmlBuilder) buildFromComplexContent(xelem *xmlElem, c xsdComplexContent) {
+func (b builder) buildFromComplexContent(xelem *xmlElem, c xsdComplexContent) {
 	if c.Extension != nil {
 		if c.Extension.Sequence != nil {
 			for _, e := range c.Extension.Sequence {
-				xelem.Children = append(xelem.Children, b.traverse(e))
+				xelem.Children = append(xelem.Children, b.buildFromElement(e))
 			}
 		}
 		base := c.Extension.Base
@@ -138,23 +134,28 @@ func addAttributes(xelem *xmlElem, attribs []xsdAttribute) {
 }
 
 // A simple content can refer to a text-only complex type
-func (b xmlBuilder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
+func (b builder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
 	if c.Extension != nil {
+		// (annotation?, ((group|all|choice|sequence)?, ((attribute|attributeGroup)*, anyAttribute?)))
 		if c.Extension.Attributes != nil {
 			b.buildFromAttributes(xelem, c.Extension.Attributes)
 		}
+		// has always a base type
 
+		child := &xmlElem{Name: xelem.Name, Cdata: true}
 		switch t := b.findType(c.Extension.Base).(type) {
 		case xsdComplexType:
 			b.buildFromComplexType(xelem, t)
 		case xsdSimpleType:
-			buildFromSimpleType(xelem, t)
-		default:
-			if len(xelem.Attribs) == 0 {
-				xelem.Type = typeFromXsdType(t.(string))
-			}
+			buildFromSimpleType(child, t)
+			//default:
+			//if len(child.Attribs) == 0 {
+			//child.Type = typeFromXsdType(t.(string))
+			//}
 		}
+		xelem.Children = append(xelem.Children, child)
 	}
+
 	if c.Restriction != nil {
 		switch t := b.findType(c.Restriction.Base).(type) {
 		case xsdComplexType:
@@ -168,7 +169,7 @@ func (b xmlBuilder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
 	}
 }
 
-func (b xmlBuilder) buildFromAttributes(xelem *xmlElem, attrs []xsdAttribute) {
+func (b builder) buildFromAttributes(xelem *xmlElem, attrs []xsdAttribute) {
 	for _, a := range attrs {
 		attr := xmlAttrib{Name: a.Name}
 		switch t := b.findType(a.Type).(type) {
@@ -181,10 +182,10 @@ func (b xmlBuilder) buildFromAttributes(xelem *xmlElem, attrs []xsdAttribute) {
 	}
 }
 
-func (b xmlBuilder) buildFromComplexType(xelem *xmlElem, t xsdComplexType) {
+func (b builder) buildFromComplexType(xelem *xmlElem, t xsdComplexType) {
 	if t.Sequence != nil {
 		for _, e := range t.Sequence {
-			xelem.Children = append(xelem.Children, b.traverse(e))
+			xelem.Children = append(xelem.Children, b.buildFromElement(e))
 		}
 	}
 
@@ -201,9 +202,9 @@ func (b xmlBuilder) buildFromComplexType(xelem *xmlElem, t xsdComplexType) {
 	}
 }
 
-func (b xmlBuilder) buildFromElement(xelem *xmlElem, e xsdElement) {
-	xelem.Name = e.Name
-	xelem.Type = e.Name
+func (b builder) buildFromElement(e xsdElement) *xmlElem {
+	xelem := &xmlElem{Name: e.Name, Type: e.Name}
+
 	if e.Max == "unbounded" {
 		xelem.List = true
 	}
@@ -228,32 +229,27 @@ func (b xmlBuilder) buildFromElement(xelem *xmlElem, e xsdElement) {
 				xelem.Type = typ
 			}
 		}
-		return
+		return xelem
 	}
 
 	if e.ComplexType != nil { // inline complex type
 		b.buildFromComplexType(xelem, *e.ComplexType)
-		return
+		return xelem
 	}
 
 	if e.SimpleType != nil { // inline simple type
 		buildFromSimpleType(xelem, *e.SimpleType)
-		return
+		return xelem
 	}
+
+	return xelem
 }
 
 func buildFromSimpleType(xelem *xmlElem, t xsdSimpleType) {
 	xelem.Type = typeFromXsdType(stripNamespace(t.Restriction.Base))
 }
 
-func (b xmlBuilder) traverse(e xsdElement) *xmlElem {
-	xelem := &xmlElem{Name: e.Name}
-
-	b.buildFromElement(xelem, e)
-	return xelem
-}
-
-func (b xmlBuilder) findType(name string) interface{} {
+func (b builder) findType(name string) interface{} {
 	name = stripNamespace(name)
 	if t, ok := b.complTypes[name]; ok {
 		return t

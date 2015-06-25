@@ -12,7 +12,7 @@ var (
 
 	attr = "{{ define \"Attr\" }}{{ printf \"  %s \" (title .Name) }}{{ printf \"%s `xml:\\\"%s,attr\\\"`\" .Type .Name }}\n{{ end }}"
 
-	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" .Type .Name }}\n{{ end }}"
+	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ if .Cdata }}{{ printf \"%s `xml:\\\",chardata\\\"`\" .Type }}{{ else }}{{ printf \"%s `xml:\\\"%s\\\"`\" .Type .Name }}{{ end }}\n{{ end }}"
 
 	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" (assimilate .Name) }}{{ range $a := .Attribs }}{{ template "Attr" $a }}{{ end }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }}}
 {{ end }}`
