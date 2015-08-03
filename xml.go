@@ -94,8 +94,8 @@ func (b builder) buildXML() []*xmlElem {
 	return xelems
 }
 
-// Build a xmlElem from an xsdElement, recursively traverse the XSD type
-// information to build up a XML descendant hierarchy.
+// buildFromElement builds an xmlElem from an xsdElement, recursively
+// traversing the XSD type information to build up an XML element hierarchy.
 func (b builder) buildFromElement(e xsdElement) *xmlElem {
 	xelem := &xmlElem{Name: e.Name, Type: e.Name}
 
@@ -108,7 +108,7 @@ func (b builder) buildFromElement(e xsdElement) *xmlElem {
 		case xsdComplexType:
 			b.buildFromComplexType(xelem, t)
 		case xsdSimpleType:
-			buildFromSimpleType(xelem, t)
+			b.buildFromSimpleType(xelem, t)
 		case string:
 			xelem.Type = t
 		}
@@ -121,104 +121,11 @@ func (b builder) buildFromElement(e xsdElement) *xmlElem {
 	}
 
 	if e.SimpleType != nil { // inline simple type
-		buildFromSimpleType(xelem, *e.SimpleType)
+		b.buildFromSimpleType(xelem, *e.SimpleType)
 		return xelem
 	}
 
 	return xelem
-}
-
-func (b builder) buildFromComplexContent(xelem *xmlElem, c xsdComplexContent) {
-	if c.Extension != nil {
-		if c.Extension.Sequence != nil {
-			for _, e := range c.Extension.Sequence {
-				xelem.Children = append(xelem.Children, b.buildFromElement(e))
-			}
-		}
-		base := c.Extension.Base
-		switch t := b.findType(base).(type) {
-		case xsdComplexType:
-			b.buildFromComplexType(xelem, t)
-		}
-
-	}
-}
-
-func typeFromXsdType(typ string) string {
-	switch typ {
-	case "boolean":
-		typ = "bool"
-	case "language", "dateTime", "Name", "token":
-		typ = "string"
-	case "long", "short", "integer", "int":
-		typ = "int"
-	case "decimal":
-		typ = "float64"
-	}
-	return typ
-}
-
-func addAttributes(xelem *xmlElem, attribs []xsdAttribute) {
-	if attribs != nil {
-		for _, attr := range attribs {
-			typ := typeFromXsdType(stripNamespace(attr.Type))
-			xelem.Attribs = append(xelem.Attribs, xmlAttrib{Name: attr.Name, Type: typ})
-		}
-	}
-}
-
-// A simple content can refer to a text-only complex type
-func (b builder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
-	if c.Extension != nil {
-		// (annotation?, ((group|all|choice|sequence)?, ((attribute|attributeGroup)*, anyAttribute?)))
-		if c.Extension.Attributes != nil {
-			b.buildFromAttributes(xelem, c.Extension.Attributes)
-		}
-		// has always a base type
-
-		var child *xmlElem
-		switch t := b.findType(c.Extension.Base).(type) {
-		case xsdComplexType:
-			b.buildFromComplexType(xelem, t)
-		case xsdSimpleType:
-			child = &xmlElem{Name: xelem.Name, Cdata: true}
-			buildFromSimpleType(child, t)
-			xelem.Children = []*xmlElem{child}
-		default:
-			child = &xmlElem{Name: xelem.Name, Cdata: true}
-			child.Type = typeFromXsdType(t.(string))
-			xelem.Children = []*xmlElem{child}
-		}
-	}
-
-	if c.Restriction != nil {
-		switch t := b.findType(c.Restriction.Base).(type) {
-		case xsdComplexType:
-			b.buildFromComplexType(xelem, t)
-		case xsdSimpleType:
-			buildFromSimpleType(xelem, t)
-		default:
-			xelem.Type = typeFromXsdType(t.(string))
-			//addAttributes(xelem, c.Extension.Attributes)
-		}
-	}
-}
-
-func (b builder) buildFromAttributes(xelem *xmlElem, attrs []xsdAttribute) {
-	for _, a := range attrs {
-		attr := xmlAttrib{Name: a.Name}
-		switch t := b.findType(a.Type).(type) {
-		case xsdSimpleType:
-			// Get type name from simpleType
-			// If Restriction.Base is a simpleType or complexType, we panic
-			attr.Type = b.findType(t.Restriction.Base).(string)
-		case string:
-			// If empty, then simpleType is present as content, but we ignore
-			// that now
-			attr.Type = t
-		}
-		xelem.Attribs = append(xelem.Attribs, attr)
-	}
 }
 
 // buildFromComplexType takes an xmlElem and an xsdComplexType, containing
@@ -243,8 +150,94 @@ func (b builder) buildFromComplexType(xelem *xmlElem, t xsdComplexType) {
 	}
 }
 
-func buildFromSimpleType(xelem *xmlElem, t xsdSimpleType) {
-	xelem.Type = typeFromXsdType(stripNamespace(t.Restriction.Base))
+// buildFromSimpleType assumes restriction child and fetches the base value,
+// assuming that value is of a XSD built-in data type.
+func (b builder) buildFromSimpleType(xelem *xmlElem, t xsdSimpleType) {
+	xelem.Type = b.findType(t.Restriction.Base).(string)
+}
+
+func (b builder) buildFromComplexContent(xelem *xmlElem, c xsdComplexContent) {
+	if c.Extension != nil {
+		b.buildFromExtension(xelem, c.Extension)
+	}
+}
+
+// A simple content can refer to a text-only complex type
+func (b builder) buildFromSimpleContent(xelem *xmlElem, c xsdSimpleContent) {
+	if c.Extension != nil {
+		b.buildFromExtension(xelem, c.Extension)
+	}
+
+	if c.Restriction != nil {
+		b.buildFromRestriction(xelem, c.Restriction)
+	}
+}
+
+// buildFromExtension extends an existing type, simple or complex, with a
+// sequence.
+func (b builder) buildFromExtension(xelem *xmlElem, e *xsdExtension) {
+	switch t := b.findType(e.Base).(type) {
+	case xsdComplexType:
+		b.buildFromComplexType(xelem, t)
+	case xsdSimpleType:
+		b.buildFromSimpleType(xelem, t)
+	default:
+		xelem.Type = t.(string)
+	}
+
+	if e.Sequence != nil {
+		for _, e := range e.Sequence {
+			xelem.Children = append(xelem.Children, b.buildFromElement(e))
+		}
+	}
+
+	if e.Attributes != nil {
+		b.buildFromAttributes(xelem, e.Attributes)
+	}
+}
+
+func (b builder) buildFromRestriction(xelem *xmlElem, r *xsdRestriction) {
+	switch t := b.findType(r.Base).(type) {
+	case xsdSimpleType:
+		b.buildFromSimpleType(xelem, t)
+	case xsdComplexType:
+		b.buildFromComplexType(xelem, t)
+	case xsdComplexContent:
+		panic("Restriction on complex content is not implemented")
+	default:
+		panic("Unexpected base type to restriction")
+	}
+}
+
+func typeFromXsdType(typ string) string {
+	switch typ {
+	case "boolean":
+		typ = "bool"
+	case "language", "dateTime", "Name", "token":
+		typ = "string"
+	case "long", "short", "integer", "int":
+		typ = "int"
+	case "decimal":
+		typ = "float64"
+	}
+	return typ
+}
+
+func (b builder) buildFromAttributes(xelem *xmlElem, attrs []xsdAttribute) {
+	for _, a := range attrs {
+		attr := xmlAttrib{Name: a.Name}
+		switch t := b.findType(a.Type).(type) {
+		case xsdSimpleType:
+			// Get type name from simpleType
+			// If Restriction.Base is a simpleType or complexType, we panic
+			attr.Type = b.findType(t.Restriction.Base).(string)
+		case string:
+			// If empty, then simpleType is present as content, but we ignore
+			// that now
+			attr.Type = t
+		}
+		xelem.Attribs = append(xelem.Attribs, attr)
+	}
 }
 
 // findType takes a type name and checks if it is a registered XSD type
