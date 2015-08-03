@@ -61,6 +61,7 @@ func extract(r io.Reader) (xsdSchema, error) {
 	return root, nil
 }
 
+// xsdSchema is the Go representation of an XSD schema.
 type xsdSchema struct {
 	XMLName      xml.Name
 	Ns           string           `xml:"xmlns,attr"`
@@ -93,6 +94,14 @@ type xsdElement struct {
 	Annotation  string          `xml:"annotation>documentation"`
 	ComplexType *xsdComplexType `xml:"complexType"` // inline complex type
 	SimpleType  *xsdSimpleType  `xml:"simpleType"`  // inline simple type
+}
+
+func (e xsdElement) isList() bool {
+	return e.Max == "unbounded"
+}
+
+func (e xsdElement) inlineType() bool {
+	return e.Type == ""
 }
 
 type xsdComplexType struct {

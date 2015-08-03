@@ -41,7 +41,7 @@ func main() {
 		log.Fatal(err)
 	}
 	builder := newBuilder(s)
-	parse(os.Stdout, builder.buildXml())
+	parse(os.Stdout, builder.buildXML())
 }
 
 type xmlElem struct {
@@ -72,7 +72,7 @@ func newBuilder(s []xsdSchema) builder {
 	}
 }
 
-func (b builder) buildXml() []*xmlElem {
+func (b builder) buildXML() []*xmlElem {
 	var roots []xsdElement
 	for _, s := range b.schemas {
 		for _, e := range s.Elements {
@@ -92,6 +92,40 @@ func (b builder) buildXml() []*xmlElem {
 	}
 
 	return xelems
+}
+
+// Build a xmlElem from an xsdElement, recursively traverse the XSD type
+// information to build up a XML descendant hierarchy.
+func (b builder) buildFromElement(e xsdElement) *xmlElem {
+	xelem := &xmlElem{Name: e.Name, Type: e.Name}
+
+	if e.isList() {
+		xelem.List = true
+	}
+
+	if !e.inlineType() {
+		switch t := b.findType(e.Type).(type) {
+		case xsdComplexType:
+			b.buildFromComplexType(xelem, t)
+		case xsdSimpleType:
+			buildFromSimpleType(xelem, t)
+		case string:
+			xelem.Type = t
+		}
+		return xelem
+	}
+
+	if e.ComplexType != nil { // inline complex type
+		b.buildFromComplexType(xelem, *e.ComplexType)
+		return xelem
+	}
+
+	if e.SimpleType != nil { // inline simple type
+		buildFromSimpleType(xelem, *e.SimpleType)
+		return xelem
+	}
+
+	return xelem
 }
 
 func (b builder) buildFromComplexContent(xelem *xmlElem, c xsdComplexContent) {
@@ -175,16 +209,22 @@ func (b builder) buildFromAttributes(xelem *xmlElem, attrs []xsdAttribute) {
 		attr := xmlAttrib{Name: a.Name}
 		switch t := b.findType(a.Type).(type) {
 		case xsdSimpleType:
-			attr.Type = typeFromXsdType(stripNamespace(t.Restriction.Base))
-		default:
-			attr.Type = typeFromXsdType(t.(string))
+			// Get type name from simpleType
+			// If Restriction.Base is a simpleType or complexType, we panic
+			attr.Type = b.findType(t.Restriction.Base).(string)
+		case string:
+			// If empty, then simpleType is present as content, but we ignore
+			// that now
+			attr.Type = t
 		}
 		xelem.Attribs = append(xelem.Attribs, attr)
 	}
 }
 
+// buildFromComplexType takes an xmlElem and an xsdComplexType, containing
+// XSD type information for xmlElem enrichment.
 func (b builder) buildFromComplexType(xelem *xmlElem, t xsdComplexType) {
-	if t.Sequence != nil {
+	if t.Sequence != nil { // Does the element have children?
 		for _, e := range t.Sequence {
 			xelem.Children = append(xelem.Children, b.buildFromElement(e))
 		}
@@ -203,53 +243,15 @@ func (b builder) buildFromComplexType(xelem *xmlElem, t xsdComplexType) {
 	}
 }
 
-func (b builder) buildFromElement(e xsdElement) *xmlElem {
-	xelem := &xmlElem{Name: e.Name, Type: e.Name}
-
-	if e.Max == "unbounded" {
-		xelem.List = true
-	}
-
-	if e.Type != "" {
-		switch t := b.findType(e.Type).(type) {
-		case xsdComplexType:
-			b.buildFromComplexType(xelem, t)
-		case xsdSimpleType:
-			buildFromSimpleType(xelem, t)
-		default:
-			switch typ := stripNamespace(e.Type); typ {
-			case "boolean":
-				xelem.Type = "bool"
-			case "language", "dateTime", "Name", "token":
-				xelem.Type = "string"
-			case "long", "short", "integer":
-				xelem.Type = "int"
-			case "decimal":
-				xelem.Type = "float64"
-			default:
-				xelem.Type = typ
-			}
-		}
-		return xelem
-	}
-
-	if e.ComplexType != nil { // inline complex type
-		b.buildFromComplexType(xelem, *e.ComplexType)
-		return xelem
-	}
-
-	if e.SimpleType != nil { // inline simple type
-		buildFromSimpleType(xelem, *e.SimpleType)
-		return xelem
-	}
-
-	return xelem
-}
-
 func buildFromSimpleType(xelem *xmlElem, t xsdSimpleType) {
 	xelem.Type = typeFromXsdType(stripNamespace(t.Restriction.Base))
 }
 
+// findType takes a type name and checks if it is a registered XSD type
+// (simple or complex), in which case that type is returned. If no such
+// type can be found, the XSD specific primitive types are mapped to their
+// Go correspondents. If no XSD type was found, the type name itself is
+// returned.
 func (b builder) findType(name string) interface{} {
 	name = stripNamespace(name)
 	if t, ok := b.complTypes[name]; ok {
@@ -258,7 +260,19 @@ func (b builder) findType(name string) interface{} {
 	if t, ok := b.simplTypes[name]; ok {
 		return t
 	}
-	return name
+
+	switch name {
+	case "boolean":
+		return "bool"
+	case "language", "dateTime", "Name", "token":
+		return "string"
+	case "long", "short", "integer", "int":
+		return "int"
+	case "decimal":
+		return "float64"
+	default:
+		return name
+	}
 }
 
 func stripNamespace(name string) string {
