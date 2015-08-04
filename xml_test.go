@@ -22,30 +22,25 @@ var (
 		gosrc string
 	}{
 		{
-			`<schema><element name="ivar"></element></schema>`,
+			`<schema>
+			<xs:element name="studio" type="xs:string" minOccurs="0">
+			</xs:element>
+</schema>`,
 			xmlElem{
-				Name: "ivar",
-				Type: "ivar",
+				Name:  "studio",
+				Type:  "string",
+				Cdata: true,
 			},
-			"type ivar struct {}",
-		},
-		{
-			`<schema><element name="ivar" type="string"></element></schema>`,
-			xmlElem{
-				Name: "ivar",
-				Type: "string",
-			},
-			"",
+			`
+			type studio struct {
+				Studio string ` + "`xml:\",chardata\"`" + `
+			}
+			`,
 		},
 
 		{
 			`<schema>
 	<element name="titleList" type="titleListType">
-		<annotation>
-			<documentation>Title list for content. At least one occurrence with the language used in the
-				market/country displaying the content.
-			</documentation>
-		</annotation>
 	</element>
 	<complexType name="titleListType">
 		<sequence>
@@ -56,10 +51,6 @@ var (
 		<simpleContent>
 			<extension base="titleType">
 				<attribute name="original" type="boolean">
-					<annotation>
-						<documentation>Marks a title as the original title
-						</documentation>
-					</annotation>
 				</attribute>
 			</extension>
 		</simpleContent>
@@ -75,9 +66,6 @@ var (
 		<simpleContent>
 			<extension base="string">
 				<attribute name="language" type="language">
-					<annotation>
-						<documentation>code in ISO 639-1</documentation>
-					</annotation>
 				</attribute>
 			</extension>
 		</simpleContent>
@@ -88,9 +76,10 @@ var (
 				Type: "titleList",
 				Children: []*xmlElem{
 					&xmlElem{
-						Name: "title",
-						Type: "string",
-						List: true,
+						Name:  "title",
+						Type:  "string",
+						Cdata: true,
+						List:  true,
 						Attribs: []xmlAttrib{
 							{Name: "language", Type: "string"},
 							{Name: "original", Type: "bool"},
@@ -100,16 +89,35 @@ var (
 			},
 			`
 type titleList struct {
-	Title []string ` + "`xml:\"title\"`" + `
+	Title []title ` + "`xml:\"title\"`" + `
 }
+
+type title struct {
+	Language string ` + "`xml:\"language,attr\"`" + `
+	Original bool ` + "`xml:\"original,attr\"`" + `
+	Title    string ` + "`xml:\",chardata\"`" + `
+}
+
 				`,
 		},
 	}
 )
 
-func TestBuildXml(t *testing.T) {
-	// Generate and write Go structs from XSD
-	//for _, xsd := range xsds {
+func TestGenerateGo(t *testing.T) {
+	for _, tst := range tests {
+
+		var out bytes.Buffer
+		doParse(&tst.xml, &out)
+		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
+			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)
+			t.Logf(out.String())
+			t.Logf(strings.Join(strings.Fields(out.String()), ""))
+			t.Logf(strings.Join(strings.Fields(tst.gosrc), ""))
+		}
+	}
+}
+
+func TestBuildXmlElem(t *testing.T) {
 	for _, tst := range tests {
 		schema, err := extract(bytes.NewBufferString(tst.xsd))
 		if err != nil {
@@ -125,15 +133,6 @@ func TestBuildXml(t *testing.T) {
 			t.Errorf("Unexpected XML element: %s", e.Name)
 			pretty.Println(tst.xml)
 			pretty.Println(e)
-		}
-
-		var out bytes.Buffer
-		doParse(e, &out)
-		//t.Log(out.String())
-		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
-			t.Errorf("Unexpected generated Go source: %s", e.Name)
-			t.Logf(strings.Join(strings.Fields(out.String()), ""))
-			t.Logf(strings.Join(strings.Fields(tst.gosrc), ""))
 		}
 	}
 }
