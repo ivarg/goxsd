@@ -37,74 +37,70 @@ var (
 			},
 			"",
 		},
+
 		{
-			`<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:element name='Root'>
-    <xs:complexType>
-      <xs:sequence>
-        <xs:element name='Customers'>
-          <xs:complexType>
-            <xs:sequence>
-              <xs:element name='Customer' type='CustomerType' minOccurs='0' maxOccurs='unbounded' />
-            </xs:sequence>
-          </xs:complexType>
-        </xs:element>
-      </xs:sequence>
-    </xs:complexType>
-  </xs:element>
-  <xs:complexType name='CustomerType'>
-    <xs:sequence>
-      <xs:element name='CompanyName' type='xs:string'/>
-    </xs:sequence>
-    <xs:attribute name='CustomerID' type='xs:token'/>
-    <xs:attribute name='MyInt' type='MyAttr'/>
-  </xs:complexType>
-  <xs:simpleType name='MyAttr'>
-	<xs:restriction base="xs:integer">
-    </xs:restriction>
-  </xs:simpleType>
-</xs:schema>
-`,
+			`<schema>
+	<element name="titleList" type="titleListType">
+		<annotation>
+			<documentation>Title list for content. At least one occurrence with the language used in the
+				market/country displaying the content.
+			</documentation>
+		</annotation>
+	</element>
+	<complexType name="titleListType">
+		<sequence>
+			<element name="title" type="originalTitleType" maxOccurs="unbounded" />
+		</sequence>
+	</complexType>
+	<complexType name="originalTitleType">
+		<simpleContent>
+			<extension base="titleType">
+				<attribute name="original" type="boolean">
+					<annotation>
+						<documentation>Marks a title as the original title
+						</documentation>
+					</annotation>
+				</attribute>
+			</extension>
+		</simpleContent>
+	</complexType>
+	<complexType name="titleType">
+		<simpleContent>
+			<restriction base="textType">
+				<maxLength value="300" />
+			</restriction>
+		</simpleContent>
+	</complexType>
+	<complexType name="textType">
+		<simpleContent>
+			<extension base="string">
+				<attribute name="language" type="language">
+					<annotation>
+						<documentation>code in ISO 639-1</documentation>
+					</annotation>
+				</attribute>
+			</extension>
+		</simpleContent>
+	</complexType>
+</schema>`,
 			xmlElem{
-				Name: "Root",
-				Type: "Root",
+				Name: "titleList",
+				Type: "titleList",
 				Children: []*xmlElem{
 					&xmlElem{
-						Name: "Customers",
-						Type: "Customers",
-						Children: []*xmlElem{
-							&xmlElem{
-								Name: "Customer",
-								Type: "Customer",
-								List: true,
-								Attribs: []xmlAttrib{
-									xmlAttrib{Name: "CustomerID", Type: "string"},
-									xmlAttrib{Name: "MyInt", Type: "int"},
-								},
-								Children: []*xmlElem{
-									&xmlElem{
-										Name: "CompanyName",
-										Type: "string",
-									},
-								},
-							},
+						Name: "title",
+						Type: "string",
+						List: true,
+						Attribs: []xmlAttrib{
+							{Name: "language", Type: "string"},
+							{Name: "original", Type: "bool"},
 						},
 					},
 				},
 			},
 			`
-type Root struct {
-	Customers Customers ` + "`xml:\"Customers\"`" + `
-}
-
-type Customers struct {
-	Customer []Customer ` + "`xml:\"Customer\"`" + `
-}
-
-type Customer struct {
-	CustomerID string ` + "`xml:\"CustomerID,attr\"`" + `
-	MyInt int ` + "`xml:\"MyInt,attr\"`" + `
-	CompanyName string ` + "`xml:\"CompanyName\"`" + `
+type titleList struct {
+	Title []string ` + "`xml:\"title\"`" + `
 }
 				`,
 		},
