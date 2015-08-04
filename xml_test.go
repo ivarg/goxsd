@@ -21,22 +21,6 @@ var (
 		xml   xmlElem
 		gosrc string
 	}{
-		{
-			`<schema>
-			<xs:element name="studio" type="xs:string" minOccurs="0">
-			</xs:element>
-</schema>`,
-			xmlElem{
-				Name:  "studio",
-				Type:  "string",
-				Cdata: true,
-			},
-			`
-			type studio struct {
-				Studio string ` + "`xml:\",chardata\"`" + `
-			}
-			`,
-		},
 
 		{
 			`<schema>
@@ -99,6 +83,59 @@ type title struct {
 }
 
 				`,
+		},
+
+		{
+			`<schema>
+	<element name="tagList">
+		<complexType>
+			<sequence>
+				<element name="tag" type="tagReferenceType" minOccurs="0" maxOccurs="unbounded" />
+			</sequence>
+		</complexType>
+	</element>
+	<complexType name="tagReferenceType">
+		<simpleContent>
+			<extension base="nidType">
+				<attribute name="type" type="tagTypeType" use="required" />
+			</extension>
+		</simpleContent>
+	</complexType>
+	<simpleType name="nidType">
+		<restriction base="string">
+			<pattern value="[0-9a-zA-Z\-]+" />
+		</restriction>
+	</simpleType>
+	<simpleType name="tagTypeType">
+		<restriction base="string">
+		</restriction>
+	</simpleType>
+</schema>`,
+			xmlElem{
+				Name: "tagList",
+				Type: "tagList",
+				Children: []*xmlElem{
+					&xmlElem{
+						Name:  "tag",
+						Type:  "string",
+						List:  true,
+						Cdata: true,
+						Attribs: []xmlAttrib{
+							{Name: "type", Type: "string"},
+						},
+					},
+				},
+			},
+			`
+type tagList struct {
+	Tag []tag ` + "`xml:\"tag\"`" + `
+}
+
+type tag struct {
+	Type string ` + "`xml:\"type,attr\"`" + `
+	Tag string ` + "`xml:\",chardata\"`" + `
+}
+			`,
 		},
 	}
 )

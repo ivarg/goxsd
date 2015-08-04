@@ -188,6 +188,11 @@ func (b builder) buildFromExtension(xelem *xmlElem, e *xsdExtension) {
 		b.buildFromComplexType(xelem, t)
 	case xsdSimpleType:
 		b.buildFromSimpleType(xelem, t)
+		// If element is of simpleType and has attributes, it must collect
+		// its value as chardata.
+		if e.Attributes != nil {
+			xelem.Cdata = true
+		}
 	default:
 		xelem.Type = t.(string)
 		// If element is of built-in type but has attributes, it must collect
@@ -269,12 +274,14 @@ func (b builder) findType(name string) interface{} {
 	switch name {
 	case "boolean":
 		return "bool"
-	case "language", "dateTime", "Name", "token":
+	case "language", "Name", "token":
 		return "string"
 	case "long", "short", "integer", "int":
 		return "int"
 	case "decimal":
 		return "float64"
+	case "dateTime":
+		return "time.Time"
 	default:
 		return name
 	}
