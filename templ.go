@@ -12,10 +12,12 @@ var (
 
 	attr = "{{ define \"Attr\" }}{{ printf \"  %s \" (title .Name) }}{{ printf \"%s `xml:\\\"%s,attr\\\"`\" .Type .Name }}\n{{ end }}"
 
-	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ if .Cdata }}{{ printf \"%s `xml:\\\",chardata\\\"`\" .Type }}{{ else }}{{ printf \"%s `xml:\\\"%s\\\"`\" .Type .Name }}{{ end }}\n{{ end }}"
+	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" .FieldType .Name }}\n{{ end }}"
 
-	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" (assimilate .Name) }}{{ range $a := .Attribs }}{{ template "Attr" $a }}{{ end }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }}}
-{{ end }}`
+	cdata = "{{ define \"Cdata\" }}{{ printf \"%s %s `xml:\\\",chardata\\\"`\\n\" (title .Name) .Type }}{{ end }}"
+
+	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" (assimilate .Name) }}{{ range $a := .Attribs }}{{ template "Attr" $a }}{{ end }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }} {{ if .Cdata }}{{ template "Cdata" . }}{{ end }} }
+	{{ end }}`
 
 	templ = `{{ template "Elem" . }}
 `
@@ -33,6 +35,7 @@ func init() {
 
 	tt = template.New("yyy").Funcs(fmap)
 	tt.Parse(attr)
+	tt.Parse(cdata)
 	tt.Parse(child)
 	tt.Parse(elem)
 	tt.Parse(templ)
@@ -73,8 +76,12 @@ func doParse(root *xmlElem, out io.Writer) {
 }
 
 func primitive(e *xmlElem) bool {
+	if e.Cdata {
+		return false
+	}
+
 	switch e.Type {
-	case "integer", "decimal", "token", "bool", "string", "int":
+	case "bool", "string", "int", "float64":
 		return true
 	}
 	return false

@@ -53,6 +53,13 @@ type xmlElem struct {
 	Children []*xmlElem
 }
 
+func (e *xmlElem) FieldType() string {
+	if e.Cdata {
+		return e.Name
+	}
+	return e.Type
+}
+
 type xmlAttrib struct {
 	Name string
 	Type string
@@ -183,6 +190,11 @@ func (b builder) buildFromExtension(xelem *xmlElem, e *xsdExtension) {
 		b.buildFromSimpleType(xelem, t)
 	default:
 		xelem.Type = t.(string)
+		// If element is of built-in type but has attributes, it must collect
+		// its value as chardata.
+		if e.Attributes != nil {
+			xelem.Cdata = true
+		}
 	}
 
 	if e.Sequence != nil {
