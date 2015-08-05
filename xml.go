@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -12,36 +13,57 @@ import (
 )
 
 var (
+	output, pckg string
+
 	usage = `Usage:
 
-  goxsd <xsd>
+  goxsd <xsd> [-o <dst>] [-p <package>]
 
 Arguments:
 
   xsd     Path to a valid XSD file
+
+Options:
+
+  -o      Output file
+  -p      Package name
 
 goxsd is a tool for generating XML decoding Go structs, according to an XSD
 schema.
 
 The argument is expected to be the path to a valid XSD schema file. Any import
 statements in that file will be be followed and parsed. The resulting set of
-Go structs will be printed on stdout.
+Go structs will be printed on stdout, unless an output file is specified with
+the -o option.
 `
 )
 
 func main() {
-	if len(os.Args) != 2 {
+	flag.StringVar(&output, "o", "", "Name of output file")
+	flag.StringVar(&pckg, "p", "", "Name of the Go package")
+	flag.Parse()
+
+	if len(flag.Args()) != 1 {
 		fmt.Println(usage)
 		os.Exit(1)
 	}
-	xsdFile := os.Args[1]
+	xsdFile := flag.Arg(0)
 
 	s, err := extractSchemas(xsdFile)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	out := os.Stdout
+	if output != "" {
+		if out, err = os.Create(output); err != nil {
+			fmt.Println("Could not create or truncate output file:", output)
+			os.Exit(1)
+		}
+	}
+
 	builder := newBuilder(s)
-	parse(os.Stdout, builder.buildXML())
+	generateGo(out, builder.buildXML())
 }
 
 type xmlElem struct {

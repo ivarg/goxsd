@@ -144,7 +144,7 @@ func TestGenerateGo(t *testing.T) {
 	for _, tst := range tests {
 
 		var out bytes.Buffer
-		doParse(&tst.xml, &out)
+		doGenerate(&tst.xml, &out)
 		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
 			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)
 			t.Logf(out.String())

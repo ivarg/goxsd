@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -53,13 +54,17 @@ func assimilate(name string) string {
 	return name
 }
 
-func parse(out io.Writer, roots []*xmlElem) {
+func generateGo(out io.Writer, roots []*xmlElem) {
+	if pckg != "" {
+		fmt.Fprintf(out, "package %s\n\n", pckg)
+	}
+
 	for _, e := range roots {
-		doParse(e, out)
+		doGenerate(e, out)
 	}
 }
 
-func doParse(root *xmlElem, out io.Writer) {
+func doGenerate(root *xmlElem, out io.Writer) {
 	if _, ok := types[root.Name]; ok {
 		return
 	}
@@ -70,7 +75,7 @@ func doParse(root *xmlElem, out io.Writer) {
 
 	for _, e := range root.Children {
 		if !primitive(e) {
-			doParse(e, out)
+			doGenerate(e, out)
 		}
 	}
 }
