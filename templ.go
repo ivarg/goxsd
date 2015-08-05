@@ -86,7 +86,7 @@ func primitive(e *xmlElem) bool {
 	}
 
 	switch e.Type {
-	case "bool", "string", "int", "float64":
+	case "bool", "string", "int", "float64", "time.Time":
 		return true
 	}
 	return false
