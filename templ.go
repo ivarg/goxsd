@@ -29,6 +29,50 @@ var (
 	}
 
 	tt *template.Template
+
+	// The initialism pairs are based on the commonInitialisms found in golang/lint
+	// https://github.com/golang/lint/blob/4946cea8b6efd778dc31dc2dbeb919535e1b7529/lint.go#L698-L738
+	//
+	initialismPairs = []string{
+		"Api", "API",
+		"Ascii", "ASCII",
+		"Cpu", "CPU",
+		"Css", "CSS",
+		"Dns", "DNS",
+		"Eof", "EOF",
+		"Guid", "GUID",
+		"Html", "HTML",
+		"Https", "HTTPS",
+		"Http", "HTTP",
+		"Id", "ID",
+		"Ip", "IP",
+		"Json", "JSON",
+		"Lhs", "LHS",
+		"Qps", "QPS",
+		"Ram", "RAM",
+		"Rhs", "RHS",
+		"Rpc", "RPC",
+		"Sla", "SLA",
+		"Smtp", "SMTP",
+		"Sql", "SQL",
+		"Ssh", "SSH",
+		"Tcp", "TCP",
+		"Tls", "TLS",
+		"Ttl", "TTL",
+		"Udp", "UDP",
+		"Uid", "UID",
+		"Ui", "UI",
+		"Uuid", "UUID",
+		"Uri", "URI",
+		"Url", "URL",
+		"Utf8", "UTF8",
+		"Vm", "VM",
+		"Xml", "XML",
+		"Xsrf", "XSRF",
+		"Xss", "XSS",
+	}
+
+	initialisms = strings.NewReplacer(initialismPairs...)
 )
 
 func init() {
@@ -90,4 +134,20 @@ func primitive(e *xmlElem) bool {
 		return true
 	}
 	return false
+}
+
+func lintName(s string) (should string) {
+	return squish(replace(s))
+}
+
+func title(s string) string {
+	return lintName(strings.Title(s))
+}
+
+func replace(s string) string {
+	return initialisms.Replace(s)
+}
+
+func squish(s string) string {
+	return strings.Replace(s, " ", "", -1)
 }
