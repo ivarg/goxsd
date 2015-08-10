@@ -25,9 +25,9 @@ var (
 	}{
 
 		{
-			false, // Exported structs
-			"",    // Struct prefix
-			`<schema>
+			exported: false,
+			prefix:   "",
+			xsd: `<schema>
 	<element name="titleList" type="titleListType">
 	</element>
 	<complexType name="titleListType">
@@ -59,7 +59,7 @@ var (
 		</simpleContent>
 	</complexType>
 </schema>`,
-			xmlElem{
+			xml: xmlElem{
 				Name: "titleList",
 				Type: "titleList",
 				Children: []*xmlElem{
@@ -75,7 +75,7 @@ var (
 					},
 				},
 			},
-			`
+			gosrc: `
 type titleList struct {
 	Title []title ` + "`xml:\"title\"`" + `
 }
@@ -90,9 +90,9 @@ type title struct {
 		},
 
 		{
-			false, // Exported structs
-			"",    // Struct prefix
-			`<schema>
+			exported: false,
+			prefix:   "",
+			xsd: `<schema>
 	<element name="tagList">
 		<complexType>
 			<sequence>
@@ -117,7 +117,7 @@ type title struct {
 		</restriction>
 	</simpleType>
 </schema>`,
-			xmlElem{
+			xml: xmlElem{
 				Name: "tagList",
 				Type: "tagList",
 				Children: []*xmlElem{
@@ -132,7 +132,7 @@ type title struct {
 					},
 				},
 			},
-			`
+			gosrc: `
 type tagList struct {
 	Tag []tag ` + "`xml:\"tag\"`" + `
 }
@@ -145,9 +145,9 @@ type tag struct {
 		},
 
 		{
-			false, // Exported structs
-			"",    // Struct prefix
-			`<schema>
+			exported: false,
+			prefix:   "",
+			xsd: `<schema>
 				<element name="tagId" type="tagReferenceType" />
 	<complexType name="tagReferenceType">
 		<simpleContent>
@@ -157,7 +157,7 @@ type tag struct {
 		</simpleContent>
 	</complexType>
 </schema>`,
-			xmlElem{
+			xml: xmlElem{
 				Name:  "tagId",
 				Type:  "string",
 				List:  false,
@@ -166,7 +166,7 @@ type tag struct {
 					{Name: "type", Type: "string"},
 				},
 			},
-			`
+			gosrc: `
 type tagID struct {
 	Type string ` + "`xml:\"type,attr\"`" + `
 	TagID string ` + "`xml:\",chardata\"`" + `
@@ -175,9 +175,9 @@ type tagID struct {
 		},
 
 		{
-			true,  // Exported structs
-			"xxx", // Struct prefix
-			`<schema>
+			exported: true,
+			prefix:   "xxx",
+			xsd: `<schema>
 	<element name="tag" type="tagReferenceType" />
 	<complexType name="tagReferenceType">
 		<simpleContent>
@@ -187,7 +187,7 @@ type tagID struct {
 		</simpleContent>
 	</complexType>
 </schema>`,
-			xmlElem{
+			xml: xmlElem{
 				Name:  "tag",
 				Type:  "string",
 				List:  false,
@@ -196,7 +196,7 @@ type tagID struct {
 					{Name: "type", Type: "string"},
 				},
 			},
-			`
+			gosrc: `
 type XxxTag struct {
 	Type string ` + "`xml:\"type,attr\"`" + `
 	Tagstring ` + "`xml:\",chardata\"`" + `
@@ -222,23 +222,6 @@ func removeComments(buf bytes.Buffer) bytes.Buffer {
 	return *bytes.NewBufferString(strings.Join(lines, "\n"))
 }
 
-func TestGenerateGo(t *testing.T) {
-	for _, tst := range tests {
-		reset()
-		exported = tst.exported
-		prefix = tst.prefix
-		var out bytes.Buffer
-		doGenerate(&tst.xml, &out)
-		out = removeComments(out)
-		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
-			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)
-			t.Logf(out.String())
-			t.Logf(strings.Join(strings.Fields(out.String()), ""))
-			t.Logf(strings.Join(strings.Fields(tst.gosrc), ""))
-		}
-	}
-}
-
 func TestBuildXmlElem(t *testing.T) {
 	for _, tst := range tests {
 		schema, err := extract(bytes.NewBufferString(tst.xsd))
@@ -256,5 +239,76 @@ func TestBuildXmlElem(t *testing.T) {
 			pretty.Println(tst.xml)
 			pretty.Println(e)
 		}
+	}
+}
+
+func TestGenerateGo(t *testing.T) {
+	for _, tst := range tests {
+		reset()
+		exported = tst.exported
+		prefix = tst.prefix
+		var out bytes.Buffer
+		doGenerate(&tst.xml, &out)
+		out = removeComments(out)
+		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
+			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)
+			t.Logf(out.String())
+			t.Logf(strings.Join(strings.Fields(out.String()), ""))
+			t.Logf(strings.Join(strings.Fields(tst.gosrc), ""))
+		}
+	}
+}
+
+func TestLintTitle(t *testing.T) {
+	for i, tt := range []struct {
+		input, want string
+	}{
+		{"foo cpu baz", "FooCPUBaz"},
+		{"test Id", "TestID"},
+		{"json and html", "JSONAndHTML"},
+	} {
+		if got := lintTitle(tt.input); got != tt.want {
+			t.Errorf("[%d] title(%q) = %q, want %q", i, tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestSquish(t *testing.T) {
+	for i, tt := range []struct {
+		input, want string
+	}{
+		{"Foo CPU Baz", "FooCPUBaz"},
+		{"Test ID", "TestID"},
+		{"JSON And HTML", "JSONAndHTML"},
+	} {
+		if got := squish(tt.input); got != tt.want {
+			t.Errorf("[%d] squish(%q) = %q, want %q", i, tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestReplace(t *testing.T) {
+	for i, tt := range []struct {
+		input, want string
+	}{
+		{"foo Cpu baz", "foo CPU baz"},
+		{"test Id", "test ID"},
+		{"Json and Html", "JSON and HTML"},
+	} {
+		if got := initialisms.Replace(tt.input); got != tt.want {
+			t.Errorf("[%d] replace(%q) = %q, want %q", i, tt.input, got, tt.want)
+		}
+	}
+
+	c := len(initialismPairs)
+
+	for i := 0; i < c; i++ {
+		input, want := initialismPairs[i], initialismPairs[i+1]
+
+		if got := initialisms.Replace(input); got != want {
+			t.Errorf("[%d] replace(%q) = %q, want %q", i, input, got, want)
+		}
+
+		i++
 	}
 }
