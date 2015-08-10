@@ -16,36 +16,24 @@ var (
 	output, pckg, prefix string
 	exported             bool
 
-	usage = `Usage:
-
-  goxsd <xsd> [-o <dst>] [-p <package>]
-
-Arguments:
-
-  xsd     Path to a valid XSD file
+	usage = `Usage: goxsd [options] <xsd_file>
 
 Options:
+  -o <file>     Destination file [default: stdout]
+  -p <package>  Package name [default: goxsd]
+  -e            Generate exported structs [default: false]
+  -x <prefix>   Struct name prefix [default: ""]
 
-  -output    Output file (default stdout)
-  -package   Package name
-  -exported  Generate exported structs (default false)
-  -prefix    Struct name prefix
-
-goxsd is a tool for generating XML decoding Go structs, according to an XSD
-schema.
-
-The argument is expected to be the path to a valid XSD schema file. Any import
-statements in that file will be be followed and parsed. The resulting set of
-Go structs will be printed on stdout, unless an output file is specified with
-the -o option.
+goxsd is a tool for generating XML decoding/encoding Go structs, according
+to an XSD schema.
 `
 )
 
 func main() {
-	flag.StringVar(&output, "output", "", "Name of output file")
-	flag.StringVar(&pckg, "package", "", "Name of the Go package")
-	flag.StringVar(&prefix, "prefix", "", "Name of the Go package")
-	flag.BoolVar(&exported, "exported", false, "Generate exported structs")
+	flag.StringVar(&output, "o", "", "Name of output file")
+	flag.StringVar(&pckg, "p", "", "Name of the Go package")
+	flag.StringVar(&prefix, "x", "", "Name of the Go package")
+	flag.BoolVar(&exported, "e", false, "Generate exported structs")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
