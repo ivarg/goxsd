@@ -12,6 +12,8 @@ go get github.com/ivarg/goxsd
 
 goxsd will default its output to stdout if an output file name is not given. Apart from a destination file, goxsd also accepts an export flag to toggle generation of exported struct names on (default is to generate unexported structs), and a prefix to be prepended to each struct name.
 
+Any import statement in the XSD will be parsed and followed, interpreting the path as relative to the current XSD file.
+
 ```
 Usage: goxsd [options] <xsd_file>
 
@@ -29,7 +31,9 @@ to an XSD schema.
 
 While the correct handling of many, if not most, XSD elements is still not fully implemented, a sufficient amount is handled for being usable in at least my own use cases.
 
-Apart from XSD elements and their inter-relations, I would like to add validators at some point, that could check various rules expressed in the XSD, such as restrictions, element attributes, and more.
+XSD Namespaces are currently completely ignored, opening for undefined behavior if two namespaces are parsed with conflicting element- or type names.
+
+At some point, I would also like to add validators, that could check various rules expressed in the XSD, such as restrictions, element attributes, and more.
 
 ## License
 

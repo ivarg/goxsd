@@ -31,7 +31,7 @@ to an XSD schema.
 
 func main() {
 	flag.StringVar(&output, "o", "", "Name of output file")
-	flag.StringVar(&pckg, "p", "", "Name of the Go package")
+	flag.StringVar(&pckg, "p", "goxsd", "Name of the Go package")
 	flag.StringVar(&prefix, "x", "", "Name of the Go package")
 	flag.BoolVar(&exported, "e", false, "Generate exported structs")
 	flag.Parse()
