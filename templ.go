@@ -11,11 +11,11 @@ import (
 var (
 	types map[string]struct{}
 
-	attr = "{{ define \"Attr\" }}{{ printf \"  %s \" (title .Name) }}{{ printf \"%s `xml:\\\"%s,attr\\\"`\" .Type .Name }}\n{{ end }}"
+	attr = "{{ define \"Attr\" }}{{ printf \"  %s \" (title .Name) }}{{ printf \"%s `xml:\\\"%s,attr\\\"`\" (lintName .Type) .Name }}\n{{ end }}"
 
-	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" .FieldType .Name }}\n{{ end }}"
+	child = "{{ define \"Child\" }}{{ printf \"  %s \" (title .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" (lintName .FieldType) .Name }}\n{{ end }}"
 
-	cdata = "{{ define \"Cdata\" }}{{ printf \"%s %s `xml:\\\",chardata\\\"`\\n\" (title .Name) .Type }}{{ end }}"
+	cdata = "{{ define \"Cdata\" }}{{ printf \"%s %s `xml:\\\",chardata\\\"`\\n\" (title .Name) (lintName .Type) }}{{ end }}"
 
 	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" (assimilate .Name) }}{{ range $a := .Attribs }}{{ template "Attr" $a }}{{ end }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }} {{ if .Cdata }}{{ template "Cdata" . }}{{ end }} }
 	{{ end }}`
@@ -24,7 +24,8 @@ var (
 `
 
 	fmap = template.FuncMap{
-		"title":      strings.Title,
+		"lintName":   lintName,
+		"title":      title,
 		"assimilate": assimilate,
 	}
 
@@ -93,9 +94,9 @@ func assimilate(name string) string {
 		for i := 1; i < len(s); i++ {
 			s[i] = strings.Title(s[i])
 		}
-		return strings.Join(s, "")
+		return lintName(strings.Join(s, ""))
 	}
-	return name
+	return lintName(name)
 }
 
 func generateGo(out io.Writer, roots []*xmlElem) {

@@ -137,6 +137,33 @@ type tag struct {
 }
 			`,
 		},
+		{
+			`<schema>
+				<element name="tagId" type="tagReferenceType" />
+	<complexType name="tagReferenceType">
+		<simpleContent>
+			<extension base="string">
+				<attribute name="type" type="string" use="required" />
+			</extension>
+		</simpleContent>
+	</complexType>
+</schema>`,
+			xmlElem{
+				Name:  "tagId",
+				Type:  "string",
+				List:  false,
+				Cdata: true,
+				Attribs: []xmlAttrib{
+					{Name: "type", Type: "string"},
+				},
+			},
+			`
+type tagID struct {
+	Type string ` + "`xml:\"type,attr\"`" + `
+	TagID string ` + "`xml:\",chardata\"`" + `
+}
+			`,
+		},
 	}
 )
 
