@@ -17,12 +17,14 @@ type testCase struct {
 
 var (
 	tests = []struct {
-		xsd   string
-		xml   xmlElem
-		gosrc string
+		exported bool
+		xsd      string
+		xml      xmlElem
+		gosrc    string
 	}{
 
 		{
+			false, // Exported structs
 			`<schema>
 	<element name="titleList" type="titleListType">
 	</element>
@@ -86,6 +88,7 @@ type title struct {
 		},
 
 		{
+			false, // Exported structs
 			`<schema>
 	<element name="tagList">
 		<complexType>
@@ -137,7 +140,9 @@ type tag struct {
 }
 			`,
 		},
+
 		{
+			false, // Exported structs
 			`<schema>
 				<element name="tagId" type="tagReferenceType" />
 	<complexType name="tagReferenceType">
@@ -164,12 +169,47 @@ type tagID struct {
 }
 			`,
 		},
+
+		{
+			true, // Exported structs
+			`<schema>
+	<element name="tag" type="tagReferenceType" />
+	<complexType name="tagReferenceType">
+		<simpleContent>
+			<extension base="string">
+				<attribute name="type" type="string" use="required" />
+			</extension>
+		</simpleContent>
+	</complexType>
+</schema>`,
+			xmlElem{
+				Name:  "tag",
+				Type:  "string",
+				List:  false,
+				Cdata: true,
+				Attribs: []xmlAttrib{
+					{Name: "type", Type: "string"},
+				},
+			},
+			`
+type Tag struct {
+	Type string ` + "`xml:\"type,attr\"`" + `
+	Tagstring ` + "`xml:\",chardata\"`" + `
+}
+			`,
+		},
 	}
 )
 
+func reset() {
+	exported = false
+	types = make(map[string]struct{})
+}
+
 func TestGenerateGo(t *testing.T) {
 	for _, tst := range tests {
-
+		reset()
+		exported = tst.exported
 		var out bytes.Buffer
 		doGenerate(&tst.xml, &out)
 		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {

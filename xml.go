@@ -14,6 +14,7 @@ import (
 
 var (
 	output, pckg string
+	exported     bool
 
 	usage = `Usage:
 
@@ -27,6 +28,7 @@ Options:
 
   -o      Output file
   -p      Package name
+  -e      Generate exported structs
 
 goxsd is a tool for generating XML decoding Go structs, according to an XSD
 schema.
@@ -41,6 +43,7 @@ the -o option.
 func main() {
 	flag.StringVar(&output, "o", "", "Name of output file")
 	flag.StringVar(&pckg, "p", "", "Name of the Go package")
+	flag.BoolVar(&exported, "e", false, "Generate exported structs")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {

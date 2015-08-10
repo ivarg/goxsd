@@ -15,13 +15,13 @@ var (
 	attr = "{{ define \"Attr\" }}{{ printf \"  %s \" (lintTitle .Name) }}{{ printf \"%s `xml:\\\"%s,attr\\\"`\" (lint .Type) .Name }}\n{{ end }}"
 
 	// Struct field generated from an element child element
-	child = "{{ define \"Child\" }}{{ printf \"  %s \" (lintTitle .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" (lint .FieldType) .Name }}\n{{ end }}"
+	child = "{{ define \"Child\" }}{{ printf \"  %s \" (lintTitle .Name) }}{{ if .List }}[]{{ end }}{{ printf \"%s `xml:\\\"%s\\\"`\" (typeName .FieldType) .Name }}\n{{ end }}"
 
 	// Struct field generated from an element with attributes
 	cdata = "{{ define \"Cdata\" }}{{ printf \"%s %s `xml:\\\",chardata\\\"`\\n\" (lintTitle .Name) (lint .Type) }}{{ end }}"
 
 	// Struct generated from a non-trivial element (with children and/or attributes)
-	elem = `{{ define "Elem" }}{{ printf "type %s struct {\n" (lint .Name) }}{{ range $a := .Attribs }}{{ template "Attr" $a }}{{ end }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }} {{ if .Cdata }}{{ template "Cdata" . }}{{ end }} }
+	elem = `{{ define "Elem" }}{{ printf "// %s is generated from an XSD element\ntype %s struct {\n" (typeName .Name) (typeName .Name) }}{{ range $a := .Attribs }}{{ template "Attr" $a }}{{ end }}{{ range $c := .Children }}{{ template "Child" $c }}{{ end }} {{ if .Cdata }}{{ template "Cdata" . }}{{ end }} }
 	{{ end }}`
 
 	templ = `{{ template "Elem" . }}
@@ -30,6 +30,7 @@ var (
 	fmap = template.FuncMap{
 		"lint":      lint,
 		"lintTitle": lintTitle,
+		"typeName":  typeName,
 	}
 
 	tt *template.Template
@@ -135,6 +136,18 @@ func lint(s string) string {
 
 func lintTitle(s string) string {
 	return lint(strings.Title(s))
+}
+
+func typeName(s string) string {
+	name := lint(s)
+	if exported {
+		switch s {
+		case "bool", "string", "int", "float64", "time.Time":
+		default:
+			name = strings.Title(name)
+		}
+	}
+	return name
 }
 
 func squish(s string) string {
