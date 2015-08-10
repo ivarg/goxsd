@@ -75,6 +75,8 @@ type xmlElem struct {
 	Children []*xmlElem
 }
 
+// If this is a chardata field, the field type must point to a
+// struct, even if the element type is a built-in primitive.
 func (e *xmlElem) FieldType() string {
 	if e.Cdata {
 		return e.Name

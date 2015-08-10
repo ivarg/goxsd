@@ -10,7 +10,7 @@ func TestTitle(t *testing.T) {
 		{"test Id", "TestID"},
 		{"json and html", "JSONAndHTML"},
 	} {
-		if got := title(tt.input); got != tt.want {
+		if got := lintTitle(tt.input); got != tt.want {
 			t.Errorf("[%d] title(%q) = %q, want %q", i, tt.input, got, tt.want)
 		}
 	}
@@ -38,7 +38,7 @@ func TestReplace(t *testing.T) {
 		{"test Id", "test ID"},
 		{"Json and Html", "JSON and HTML"},
 	} {
-		if got := replace(tt.input); got != tt.want {
+		if got := initialisms.Replace(tt.input); got != tt.want {
 			t.Errorf("[%d] replace(%q) = %q, want %q", i, tt.input, got, tt.want)
 		}
 	}
@@ -48,7 +48,7 @@ func TestReplace(t *testing.T) {
 	for i := 0; i < c; i++ {
 		input, want := initialismPairs[i], initialismPairs[i+1]
 
-		if got := replace(input); got != want {
+		if got := initialisms.Replace(input); got != want {
 			t.Errorf("[%d] replace(%q) = %q, want %q", i, input, got, want)
 		}
 
