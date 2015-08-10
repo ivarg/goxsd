@@ -140,10 +140,13 @@ func lintTitle(s string) string {
 
 func typeName(s string) string {
 	name := lint(s)
-	if exported {
-		switch s {
-		case "bool", "string", "int", "float64", "time.Time":
-		default:
+	switch s {
+	case "bool", "string", "int", "float64", "time.Time":
+	default:
+		if prefix != "" {
+			name = prefix + strings.Title(name)
+		}
+		if exported {
 			name = strings.Title(name)
 		}
 	}

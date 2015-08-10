@@ -18,6 +18,7 @@ type testCase struct {
 var (
 	tests = []struct {
 		exported bool
+		prefix   string
 		xsd      string
 		xml      xmlElem
 		gosrc    string
@@ -25,6 +26,7 @@ var (
 
 		{
 			false, // Exported structs
+			"",    // Struct prefix
 			`<schema>
 	<element name="titleList" type="titleListType">
 	</element>
@@ -89,6 +91,7 @@ type title struct {
 
 		{
 			false, // Exported structs
+			"",    // Struct prefix
 			`<schema>
 	<element name="tagList">
 		<complexType>
@@ -143,6 +146,7 @@ type tag struct {
 
 		{
 			false, // Exported structs
+			"",    // Struct prefix
 			`<schema>
 				<element name="tagId" type="tagReferenceType" />
 	<complexType name="tagReferenceType">
@@ -171,7 +175,8 @@ type tagID struct {
 		},
 
 		{
-			true, // Exported structs
+			true,  // Exported structs
+			"xxx", // Struct prefix
 			`<schema>
 	<element name="tag" type="tagReferenceType" />
 	<complexType name="tagReferenceType">
@@ -192,7 +197,7 @@ type tagID struct {
 				},
 			},
 			`
-type Tag struct {
+type XxxTag struct {
 	Type string ` + "`xml:\"type,attr\"`" + `
 	Tagstring ` + "`xml:\",chardata\"`" + `
 }
@@ -203,15 +208,28 @@ type Tag struct {
 
 func reset() {
 	exported = false
+	prefix = ""
 	types = make(map[string]struct{})
+}
+
+func removeComments(buf bytes.Buffer) bytes.Buffer {
+	lines := strings.Split(buf.String(), "\n")
+	for i, l := range lines {
+		if strings.HasPrefix(l, "//") {
+			lines = append(lines[:i], lines[i+1:]...)
+		}
+	}
+	return *bytes.NewBufferString(strings.Join(lines, "\n"))
 }
 
 func TestGenerateGo(t *testing.T) {
 	for _, tst := range tests {
 		reset()
 		exported = tst.exported
+		prefix = tst.prefix
 		var out bytes.Buffer
 		doGenerate(&tst.xml, &out)
+		out = removeComments(out)
 		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
 			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)
 			t.Logf(out.String())
