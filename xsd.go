@@ -2,63 +2,51 @@ package main
 
 import (
 	"encoding/xml"
-	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 var (
-	extracted map[string]struct{}
+	parsedFiles map[string]struct{}
 )
 
-func extractSchemas(fname string) ([]xsdSchema, error) {
-	schemas := make([]xsdSchema, 0, 10)
-	extracted = make(map[string]struct{})
-	schemas, err := extractAll(fname)
+func parseXSDFile(fname string) ([]xsdSchema, error) {
+	schemas := []xsdSchema{}
+	parsedFiles = make(map[string]struct{})
+	schemas, err := parse(fname)
 	if err != nil {
 		return nil, err
 	}
 	return schemas, nil
 }
 
-func extractAll(fname string) ([]xsdSchema, error) {
+func parse(fname string) ([]xsdSchema, error) {
 	f, err := os.Open(fname)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
-	schema, err := extract(f)
-	if err != nil {
+	var schema xsdSchema
+	if err := xml.NewDecoder(f).Decode(&schema); err != nil {
 		return nil, err
 	}
+	f.Close()
 
 	schemas := []xsdSchema{schema}
 	dir, file := filepath.Split(fname)
-	extracted[file] = struct{}{}
+	parsedFiles[file] = struct{}{}
 	for _, imp := range schema.Imports {
-		if _, ok := extracted[imp.Location]; ok {
+		if _, ok := parsedFiles[imp.Location]; ok {
 			continue
 		}
-		s, err := extractAll(filepath.Join(dir, imp.Location))
+		s, err := parse(filepath.Join(dir, imp.Location))
 		if err != nil {
 			return nil, err
 		}
 		schemas = append(schemas, s...)
 	}
 	return schemas, nil
-}
-
-func extract(r io.Reader) (xsdSchema, error) {
-	var root xsdSchema
-	if err := xml.NewDecoder(r).Decode(&root); err != nil {
-		log.Println("Error: could not decode")
-		return xsdSchema{}, err
-	}
-
-	return root, nil
 }
 
 // xsdSchema is the Go representation of an XSD schema.

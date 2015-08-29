@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/xml"
 	"reflect"
 	"strings"
 	"testing"
@@ -178,7 +179,7 @@ type tagID struct {
 			exported: true,
 			prefix:   "xxx",
 			xsd: `<schema>
-	<element name="tag" type="tagReferenceType" />
+	<element name="url" type="tagReferenceType" />
 	<complexType name="tagReferenceType">
 		<simpleContent>
 			<extension base="string">
@@ -188,7 +189,7 @@ type tagID struct {
 	</complexType>
 </schema>`,
 			xml: xmlElem{
-				Name:  "tag",
+				Name:  "url",
 				Type:  "string",
 				List:  false,
 				Cdata: true,
@@ -197,20 +198,14 @@ type tagID struct {
 				},
 			},
 			gosrc: `
-type XxxTag struct {
+type XxxURL struct {
 	Type string ` + "`xml:\"type,attr\"`" + `
-	Tagstring ` + "`xml:\",chardata\"`" + `
+	URL string ` + "`xml:\",chardata\"`" + `
 }
 			`,
 		},
 	}
 )
-
-func reset() {
-	exported = false
-	prefix = ""
-	types = make(map[string]struct{})
-}
 
 func removeComments(buf bytes.Buffer) bytes.Buffer {
 	lines := strings.Split(buf.String(), "\n")
@@ -224,8 +219,8 @@ func removeComments(buf bytes.Buffer) bytes.Buffer {
 
 func TestBuildXmlElem(t *testing.T) {
 	for _, tst := range tests {
-		schema, err := extract(bytes.NewBufferString(tst.xsd))
-		if err != nil {
+		var schema xsdSchema
+		if err := xml.Unmarshal([]byte(tst.xsd), &schema); err != nil {
 			t.Error(err)
 		}
 		b := newBuilder([]xsdSchema{schema})
@@ -244,11 +239,9 @@ func TestBuildXmlElem(t *testing.T) {
 
 func TestGenerateGo(t *testing.T) {
 	for _, tst := range tests {
-		reset()
-		exported = tst.exported
-		prefix = tst.prefix
 		var out bytes.Buffer
-		doGenerate(&tst.xml, &out)
+		g := generator{prefix: tst.prefix, exported: tst.exported}
+		g.do(&out, []*xmlElem{&tst.xml})
 		out = removeComments(out)
 		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
 			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)

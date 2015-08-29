@@ -42,7 +42,7 @@ func main() {
 	}
 	xsdFile := flag.Arg(0)
 
-	s, err := extractSchemas(xsdFile)
+	s, err := parseXSDFile(xsdFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +56,8 @@ func main() {
 	}
 
 	builder := newBuilder(s)
-	generateGo(out, builder.buildXML())
+	g := generator{pkg: pckg, prefix: prefix, exported: exported}
+	g.do(out, builder.buildXML())
 }
 
 type xmlElem struct {
