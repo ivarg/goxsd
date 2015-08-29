@@ -1,6 +1,6 @@
 # goxsd
 
-Goxsd is a tool for generating XML decoding/encoding structs from an [XSD schema](http://www.w3schools.com/schema/default.asp) specification. It does not yet implement the full XSD specificaiton; in particular, it does not generate any validation code, although it shouldn't be too hard to do.
+Goxsd is a tool for generating XML decoding Go structs from an [XSD schema](http://www.w3schools.com/schema/default.asp) specification. It does not yet implement the full XSD specificaiton, but goes sufficiently far to be useful for at least some use cases.
 
 ## Installation
 
@@ -27,13 +27,13 @@ goxsd is a tool for generating XML decoding/encoding Go structs, according
 to an XSD schema.
 ```
 
-## Not yet implemented
+## TODOs
 
-While the correct handling of many, if not most, XSD elements is still not fully implemented, a sufficient amount is handled for being usable in at least my own use cases.
+* Complete handling of more XSD elements is needed
 
-XSD Namespaces are currently completely ignored, opening for undefined behavior if two namespaces are parsed with conflicting element- or type names.
+* XSD namespaces are currently completely ignored, opening for undefined behavior if two namespaces are parsed with conflicting element- or type names.
 
-At some point, I would also like to add validators, that could check various rules expressed in the XSD, such as restrictions, element attributes, and more.
+* At some point, I would also like to generate validation code, that could check various rules and constraints expressed in the XSD
 
 ## License
 
