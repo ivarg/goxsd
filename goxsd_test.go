@@ -12,7 +12,7 @@ import (
 
 type testCase struct {
 	xsd   string
-	xml   xmlElem
+	xml   xmlTree
 	gosrc string
 }
 
@@ -21,7 +21,7 @@ var (
 		exported bool
 		prefix   string
 		xsd      string
-		xml      xmlElem
+		xml      xmlTree
 		gosrc    string
 	}{
 
@@ -60,11 +60,11 @@ var (
 		</simpleContent>
 	</complexType>
 </schema>`,
-			xml: xmlElem{
+			xml: xmlTree{
 				Name: "titleList",
 				Type: "titleList",
-				Children: []*xmlElem{
-					&xmlElem{
+				Children: []*xmlTree{
+					&xmlTree{
 						Name:  "title",
 						Type:  "string",
 						Cdata: true,
@@ -118,11 +118,11 @@ type title struct {
 		</restriction>
 	</simpleType>
 </schema>`,
-			xml: xmlElem{
+			xml: xmlTree{
 				Name: "tagList",
 				Type: "tagList",
-				Children: []*xmlElem{
-					&xmlElem{
+				Children: []*xmlTree{
+					&xmlTree{
 						Name:  "tag",
 						Type:  "string",
 						List:  true,
@@ -158,7 +158,7 @@ type tag struct {
 		</simpleContent>
 	</complexType>
 </schema>`,
-			xml: xmlElem{
+			xml: xmlTree{
 				Name:  "tagId",
 				Type:  "string",
 				List:  false,
@@ -188,7 +188,7 @@ type tagID struct {
 		</simpleContent>
 	</complexType>
 </schema>`,
-			xml: xmlElem{
+			xml: xmlTree{
 				Name:  "url",
 				Type:  "string",
 				List:  false,
@@ -223,8 +223,13 @@ func TestBuildXmlElem(t *testing.T) {
 		if err := xml.Unmarshal([]byte(tst.xsd), &schema); err != nil {
 			t.Error(err)
 		}
-		b := newBuilder([]xsdSchema{schema})
-		elems := b.buildXML()
+
+		bldr := builder{
+			schemas:    []xsdSchema{schema},
+			complTypes: make(map[string]xsdComplexType),
+			simplTypes: make(map[string]xsdSimpleType),
+		}
+		elems := bldr.buildXML()
 		if len(elems) != 1 {
 			t.Errorf("wrong number of xml elements")
 		}
@@ -241,7 +246,7 @@ func TestGenerateGo(t *testing.T) {
 	for _, tst := range tests {
 		var out bytes.Buffer
 		g := generator{prefix: tst.prefix, exported: tst.exported}
-		g.do(&out, []*xmlElem{&tst.xml})
+		g.do(&out, []*xmlTree{&tst.xml})
 		out = removeComments(out)
 		if strings.Join(strings.Fields(out.String()), "") != strings.Join(strings.Fields(tst.gosrc), "") {
 			t.Errorf("Unexpected generated Go source: %s", tst.xml.Name)

@@ -16,7 +16,7 @@ var (
 {{ end }}`
 
 	// Struct field generated from an element child element
-	child = `{{ define "Child" }}{{ printf "  %s " (lintTitle .Name) }}{{ if .List }}[]{{ end }}{{ printf "%s ` + "`xml:\\\"%s\\\"`" + `" (typeName .FieldType) .Name }}
+	child = `{{ define "Child" }}{{ printf "  %s " (lintTitle .Name) }}{{ if .List }}[]{{ end }}{{ printf "%s ` + "`xml:\\\"%s\\\"`" + `" (typeName (fieldType .)) .Name }}
 {{ end }}`
 
 	// Struct field generated from the character data of an element
@@ -84,7 +84,7 @@ type generator struct {
 	types map[string]struct{}
 }
 
-func (g generator) do(out io.Writer, roots []*xmlElem) error {
+func (g generator) do(out io.Writer, roots []*xmlTree) error {
 	g.types = make(map[string]struct{})
 
 	tt, err := prepareTemplates(g.prefix, g.exported)
@@ -116,7 +116,7 @@ func (g generator) do(out io.Writer, roots []*xmlElem) error {
 	return nil
 }
 
-func (g generator) execute(root *xmlElem, tt *template.Template, out io.Writer) error {
+func (g generator) execute(root *xmlTree, tt *template.Template, out io.Writer) error {
 	if _, ok := g.types[root.Name]; ok {
 		return nil
 	}
@@ -154,6 +154,7 @@ func prepareTemplates(prefix string, exported bool) (*template.Template, error) 
 		"lint":      lint,
 		"lintTitle": lintTitle,
 		"typeName":  typeName,
+		"fieldType": fieldType,
 	}
 
 	tt := template.New("yyy").Funcs(fmap)
@@ -172,7 +173,16 @@ func prepareTemplates(prefix string, exported bool) (*template.Template, error) 
 	return tt, nil
 }
 
-func primitiveType(e *xmlElem) bool {
+// If this is a chardata field, the field type must point to a
+// struct, even if the element type is a built-in primitive.
+func fieldType(e *xmlTree) string {
+	if e.Cdata {
+		return e.Name
+	}
+	return e.Type
+}
+
+func primitiveType(e *xmlTree) bool {
 	if e.Cdata {
 		return false
 	}
