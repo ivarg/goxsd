@@ -57,7 +57,9 @@ func main() {
 
 	builder := newBuilder(s)
 	g := generator{pkg: pckg, prefix: prefix, exported: exported}
-	g.do(out, builder.buildXML())
+	if err := g.do(out, builder.buildXML()); err != nil {
+		fmt.Errorf("Code generation failed unexpectedly: %s", err.Error())
+	}
 }
 
 type xmlElem struct {
