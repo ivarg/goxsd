@@ -68,7 +68,8 @@ func main() {
 	}
 
 	if err := gen.do(out, bldr.buildXML()); err != nil {
-		fmt.Errorf("Code generation failed unexpectedly: %s", err.Error())
+		fmt.Println("Code generation failed unexpectedly:", err.Error())
+		os.Exit(1)
 	}
 }
 
