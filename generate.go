@@ -132,7 +132,9 @@ func (g generator) execute(root *xmlTree, tt *template.Template, out io.Writer) 
 
 	for _, e := range root.Children {
 		if !primitiveType(e) {
-			return g.execute(e, tt, out)
+			if err := g.execute(e, tt, out); err != nil {
+				return err
+			}
 		}
 	}
 
