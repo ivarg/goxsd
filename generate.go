@@ -104,7 +104,12 @@ func (g generator) do(out io.Writer, roots []*xmlTree) error {
 		}
 	}
 
-	buf, err := imports.Process("", res.Bytes(), &imports.Options{Fragment: true})
+	buf, err := imports.Process("", res.Bytes(), &imports.Options{
+		Fragment:  true,
+		Comments:  true,
+		TabIndent: true,
+		TabWidth:  8,
+	})
 	if err != nil {
 		return err
 	}
