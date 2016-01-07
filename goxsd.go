@@ -288,10 +288,12 @@ func (b builder) findType(name string) interface{} {
 	switch name {
 	case "boolean":
 		return "bool"
-	case "language", "Name", "token", "duration":
+	case "language", "Name", "token", "duration", "anyURI":
 		return "string"
 	case "long", "short", "integer", "int":
 		return "int"
+	case "unsignedShort":
+		return "uint16"
 	case "decimal":
 		return "float64"
 	case "dateTime":
