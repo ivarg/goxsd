@@ -240,20 +240,6 @@ func (b builder) buildFromRestriction(xelem *xmlTree, r *xsdRestriction) {
 	}
 }
 
-func typeFromXsdType(typ string) string {
-	switch typ {
-	case "boolean":
-		typ = "bool"
-	case "language", "dateTime", "Name", "token":
-		typ = "string"
-	case "long", "short", "integer", "int":
-		typ = "int"
-	case "decimal":
-		typ = "float64"
-	}
-	return typ
-}
-
 func (b builder) buildFromAttributes(xelem *xmlTree, attrs []xsdAttribute) {
 	for _, a := range attrs {
 		attr := xmlAttrib{Name: a.Name}
