@@ -240,20 +240,6 @@ func (b builder) buildFromRestriction(xelem *xmlTree, r *xsdRestriction) {
 	}
 }
 
-func typeFromXsdType(typ string) string {
-	switch typ {
-	case "boolean":
-		typ = "bool"
-	case "language", "dateTime", "Name", "token":
-		typ = "string"
-	case "long", "short", "integer", "int":
-		typ = "int"
-	case "decimal":
-		typ = "float64"
-	}
-	return typ
-}
-
 func (b builder) buildFromAttributes(xelem *xmlTree, attrs []xsdAttribute) {
 	for _, a := range attrs {
 		attr := xmlAttrib{Name: a.Name}
@@ -288,10 +274,12 @@ func (b builder) findType(name string) interface{} {
 	switch name {
 	case "boolean":
 		return "bool"
-	case "language", "Name", "token", "duration":
+	case "language", "Name", "token", "duration", "anyURI":
 		return "string"
 	case "long", "short", "integer", "int":
 		return "int"
+	case "unsignedShort":
+		return "uint16"
 	case "decimal":
 		return "float64"
 	case "dateTime":
