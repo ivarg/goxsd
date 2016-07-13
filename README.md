@@ -1,6 +1,6 @@
 # goxsd
 
-Goxsd is a tool for generating XML decoding Go structs from an [XSD schema](http://www.w3schools.com/schema/default.asp) specification. It does not yet implement the full XSD specificaiton, but goes sufficiently far to be useful for at least some use cases.
+Goxsd is a tool for generating XML decoding Go structs from an [XSD schema](https://www.w3.org/TR/xmlschema11-1) specification. It does not yet implement the full XSD specificaiton, but goes sufficiently far to be useful for at least some use cases.
 
 ## Installation
 
