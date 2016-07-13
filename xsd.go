@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/xml"
+	"fmt"
 	"golang.org/x/text/encoding/charmap"
 	"io"
 	"os"
@@ -29,7 +30,7 @@ func makeCharsetReader(charset string, input io.Reader) (io.Reader, error) {
 	if charset == "Windows-1252" {
 		return charmap.Windows1252.NewDecoder().Reader(input), nil
 	}
-	return nil, nil
+	return nil, fmt.Errorf("Unknown charset: %s", charset)
 }
 
 func parse(fname string) ([]xsdSchema, error) {
