@@ -204,6 +204,22 @@ type XxxURL struct {
 }
 			`,
 		},
+
+		// Windows-1252 encoding
+		{
+			xsd: `<?xml version="1.0" encoding="Windows-1252"?>
+	<schema>
+		<element name="empty" type="tagReferenceType" />
+		<complexType name="tagReferenceType"/>
+	</schema>`,
+			xml: xmlTree{
+				Name: "empty",
+				Type: "empty",
+			},
+			gosrc: `
+type empty struct {}
+			`,
+		},
 	}
 )
 
@@ -220,7 +236,11 @@ func removeComments(buf bytes.Buffer) bytes.Buffer {
 func TestBuildXmlElem(t *testing.T) {
 	for _, tst := range tests {
 		var schema xsdSchema
-		if err := xml.Unmarshal([]byte(tst.xsd), &schema); err != nil {
+
+		d := xml.NewDecoder(strings.NewReader(tst.xsd))
+		// handle special character sets
+		d.CharsetReader = makeCharsetReader
+		if err := d.Decode(&schema); err != nil {
 			t.Error(err)
 		}
 
