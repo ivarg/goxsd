@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/xml"
 	"reflect"
 	"strings"
 	"testing"
@@ -235,17 +234,13 @@ func removeComments(buf bytes.Buffer) bytes.Buffer {
 
 func TestBuildXmlElem(t *testing.T) {
 	for _, tst := range tests {
-		var schema xsdSchema
-
-		d := xml.NewDecoder(strings.NewReader(tst.xsd))
-		// handle special character sets
-		d.CharsetReader = makeCharsetReader
-		if err := d.Decode(&schema); err != nil {
+		schemas, err := parse(strings.NewReader(tst.xsd), "test")
+		if err != nil {
 			t.Error(err)
 		}
 
 		bldr := builder{
-			schemas:    []xsdSchema{schema},
+			schemas:    schemas,
 			complTypes: make(map[string]xsdComplexType),
 			simplTypes: make(map[string]xsdSimpleType),
 		}

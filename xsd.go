@@ -3,25 +3,26 @@ package main
 import (
 	"encoding/xml"
 	"fmt"
-	"golang.org/x/text/encoding/charmap"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 var (
-	parsedFiles map[string]struct{}
+	parsedFiles = make(map[string]struct{})
 )
 
 func parseXSDFile(fname string) ([]xsdSchema, error) {
-	schemas := []xsdSchema{}
-	parsedFiles = make(map[string]struct{})
-	schemas, err := parse(fname)
+	f, err := os.Open(fname)
 	if err != nil {
 		return nil, err
 	}
-	return schemas, nil
+	defer f.Close()
+
+	return parse(f, fname)
 }
 
 // makeCharsetReader returns special readers as needed for xml encodings, or
@@ -33,20 +34,12 @@ func makeCharsetReader(charset string, input io.Reader) (io.Reader, error) {
 	return nil, fmt.Errorf("Unknown charset: %s", charset)
 }
 
-func parse(fname string) ([]xsdSchema, error) {
-	f, err := os.Open(fname)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
+func parse(r io.Reader, fname string) ([]xsdSchema, error) {
 	var schema xsdSchema
 
-	d := xml.NewDecoder(f)
-
+	d := xml.NewDecoder(r)
 	// handle special character sets
 	d.CharsetReader = makeCharsetReader
-
 	if err := d.Decode(&schema); err != nil {
 		return nil, err
 	}
@@ -58,7 +51,7 @@ func parse(fname string) ([]xsdSchema, error) {
 		if _, ok := parsedFiles[imp.Location]; ok {
 			continue
 		}
-		s, err := parse(filepath.Join(dir, imp.Location))
+		s, err := parseXSDFile(filepath.Join(dir, imp.Location))
 		if err != nil {
 			return nil, err
 		}
