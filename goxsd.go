@@ -55,11 +55,7 @@ func main() {
 		}
 	}
 
-	bldr := builder{
-		schemas:    s,
-		complTypes: make(map[string]xsdComplexType),
-		simplTypes: make(map[string]xsdSimpleType),
-	}
+	bldr := newBuilder(s)
 
 	gen := generator{
 		pkg:      pckg,
@@ -73,6 +69,14 @@ func main() {
 	}
 }
 
+// xmlTree is the representation of an XML element node in a tree. It
+// contains information about whether
+// - it is of a basic data type or a composite type (in which case its
+//   type equals its name)
+// - if it represents a list of children to its parent
+// - if it has children of its own
+// - any attributes
+// - if the element contains any character data
 type xmlTree struct {
 	Name     string
 	Type     string
@@ -93,7 +97,19 @@ type builder struct {
 	simplTypes map[string]xsdSimpleType
 }
 
-func (b builder) buildXML() []*xmlTree {
+// newBuilder creates a new initialized builder populated with the given
+// xsdSchema slice.
+func newBuilder(schemas []xsdSchema) *builder {
+	return &builder{
+		schemas:    schemas,
+		complTypes: make(map[string]xsdComplexType),
+		simplTypes: make(map[string]xsdSimpleType),
+	}
+}
+
+// buildXML generates and returns a tree of xmlTree objects based on a set of
+// parsed XSD schemas.
+func (b *builder) buildXML() []*xmlTree {
 	var roots []xsdElement
 	for _, s := range b.schemas {
 		for _, e := range s.Elements {
@@ -115,9 +131,9 @@ func (b builder) buildXML() []*xmlTree {
 	return xelems
 }
 
-// buildFromElement builds an xmlElem from an xsdElement, recursively
+// buildFromElement builds an xmlTree from an xsdElement, recursively
 // traversing the XSD type information to build up an XML element hierarchy.
-func (b builder) buildFromElement(e xsdElement) *xmlTree {
+func (b *builder) buildFromElement(e xsdElement) *xmlTree {
 	xelem := &xmlTree{Name: e.Name, Type: e.Name}
 
 	if e.isList() {
@@ -149,9 +165,9 @@ func (b builder) buildFromElement(e xsdElement) *xmlTree {
 	return xelem
 }
 
-// buildFromComplexType takes an xmlElem and an xsdComplexType, containing
-// XSD type information for xmlElem enrichment.
-func (b builder) buildFromComplexType(xelem *xmlTree, t xsdComplexType) {
+// buildFromComplexType takes an xmlTree and an xsdComplexType, containing
+// XSD type information for xmlTree enrichment.
+func (b *builder) buildFromComplexType(xelem *xmlTree, t xsdComplexType) {
 	if t.Sequence != nil { // Does the element have children?
 		for _, e := range t.Sequence {
 			xelem.Children = append(xelem.Children, b.buildFromElement(e))
@@ -173,18 +189,18 @@ func (b builder) buildFromComplexType(xelem *xmlTree, t xsdComplexType) {
 
 // buildFromSimpleType assumes restriction child and fetches the base value,
 // assuming that value is of a XSD built-in data type.
-func (b builder) buildFromSimpleType(xelem *xmlTree, t xsdSimpleType) {
+func (b *builder) buildFromSimpleType(xelem *xmlTree, t xsdSimpleType) {
 	xelem.Type = b.findType(t.Restriction.Base).(string)
 }
 
-func (b builder) buildFromComplexContent(xelem *xmlTree, c xsdComplexContent) {
+func (b *builder) buildFromComplexContent(xelem *xmlTree, c xsdComplexContent) {
 	if c.Extension != nil {
 		b.buildFromExtension(xelem, c.Extension)
 	}
 }
 
 // A simple content can refer to a text-only complex type
-func (b builder) buildFromSimpleContent(xelem *xmlTree, c xsdSimpleContent) {
+func (b *builder) buildFromSimpleContent(xelem *xmlTree, c xsdSimpleContent) {
 	if c.Extension != nil {
 		b.buildFromExtension(xelem, c.Extension)
 	}
@@ -196,7 +212,7 @@ func (b builder) buildFromSimpleContent(xelem *xmlTree, c xsdSimpleContent) {
 
 // buildFromExtension extends an existing type, simple or complex, with a
 // sequence.
-func (b builder) buildFromExtension(xelem *xmlTree, e *xsdExtension) {
+func (b *builder) buildFromExtension(xelem *xmlTree, e *xsdExtension) {
 	switch t := b.findType(e.Base).(type) {
 	case xsdComplexType:
 		b.buildFromComplexType(xelem, t)
@@ -227,7 +243,7 @@ func (b builder) buildFromExtension(xelem *xmlTree, e *xsdExtension) {
 	}
 }
 
-func (b builder) buildFromRestriction(xelem *xmlTree, r *xsdRestriction) {
+func (b *builder) buildFromRestriction(xelem *xmlTree, r *xsdRestriction) {
 	switch t := b.findType(r.Base).(type) {
 	case xsdSimpleType:
 		b.buildFromSimpleType(xelem, t)
@@ -240,7 +256,7 @@ func (b builder) buildFromRestriction(xelem *xmlTree, r *xsdRestriction) {
 	}
 }
 
-func (b builder) buildFromAttributes(xelem *xmlTree, attrs []xsdAttribute) {
+func (b *builder) buildFromAttributes(xelem *xmlTree, attrs []xsdAttribute) {
 	for _, a := range attrs {
 		attr := xmlAttrib{Name: a.Name}
 		switch t := b.findType(a.Type).(type) {
@@ -262,7 +278,7 @@ func (b builder) buildFromAttributes(xelem *xmlTree, attrs []xsdAttribute) {
 // type can be found, the XSD specific primitive types are mapped to their
 // Go correspondents. If no XSD type was found, the type name itself is
 // returned.
-func (b builder) findType(name string) interface{} {
+func (b *builder) findType(name string) interface{} {
 	name = stripNamespace(name)
 	if t, ok := b.complTypes[name]; ok {
 		return t

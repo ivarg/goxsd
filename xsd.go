@@ -60,7 +60,7 @@ func parse(r io.Reader, fname string) ([]xsdSchema, error) {
 	return schemas, nil
 }
 
-// xsdSchema is the Go representation of an XSD schema.
+// xsdSchema is the root of our Go representation of an XSD schema.
 type xsdSchema struct {
 	XMLName      xml.Name
 	Ns           string           `xml:"xmlns,attr"`

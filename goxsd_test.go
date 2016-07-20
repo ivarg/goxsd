@@ -236,14 +236,10 @@ func TestBuildXmlElem(t *testing.T) {
 	for _, tst := range tests {
 		schemas, err := parse(strings.NewReader(tst.xsd), "test")
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
-		bldr := builder{
-			schemas:    schemas,
-			complTypes: make(map[string]xsdComplexType),
-			simplTypes: make(map[string]xsdSimpleType),
-		}
+		bldr := newBuilder(schemas)
 		elems := bldr.buildXML()
 		if len(elems) != 1 {
 			t.Errorf("wrong number of xml elements")
