@@ -16,8 +16,8 @@ var (
 {{ end }}`
 
 	// Struct field generated from an element child element
-	child = `{{ define "Child" }}{{ printf "  %s " (lintTitle .Name) }}{{ if .List }}[]{{ end }}{{ printf "%s ` + "`xml:\\\"%s\\\"`" + `" (typeName (fieldType .)) .Name }}
-{{ end }}`
+	child = `{{ define "Child" }}{{ printf "  %s " (lintTitle .Name) }}{{ if .List }}[]{{ end }}{{ printf "%s ` + "`xml:\\\"%s%s\\\"`" + `" (typeName (fieldType .)) .Name (omitEmpty .OmitEmpty) }}
+	{{ end }}`
 
 	// Struct field generated from the character data of an element
 	cdata = `{{ define "Cdata" }}{{ printf "%s %s ` + "`xml:\\\",chardata\\\"`" + `" (lintTitle .Name) (lint .Type) }}
@@ -157,11 +157,20 @@ func prepareTemplates(prefix string, exported bool) (*template.Template, error) 
 		return name
 	}
 
+	omitEmpty := func(empty bool) string {
+		if !empty {
+			return ""
+		}
+
+		return ",omitempty"
+	}
+
 	fmap := template.FuncMap{
 		"lint":      lint,
 		"lintTitle": lintTitle,
 		"typeName":  typeName,
 		"fieldType": fieldType,
+		"omitEmpty": omitEmpty,
 	}
 
 	tt := template.New("yyy").Funcs(fmap)
@@ -187,6 +196,14 @@ func fieldType(e *xmlTree) string {
 		return e.Name
 	}
 	return e.Type
+}
+
+func omitEmpty(e *xmlTree) string {
+	if e.OmitEmpty {
+		return ",omitempty"
+	}
+
+	return ""
 }
 
 func primitiveType(e *xmlTree) bool {

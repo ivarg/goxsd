@@ -78,12 +78,13 @@ func main() {
 // - any attributes
 // - if the element contains any character data
 type xmlTree struct {
-	Name     string
-	Type     string
-	List     bool
-	Cdata    bool
-	Attribs  []xmlAttrib
-	Children []*xmlTree
+	Name      string
+	Type      string
+	List      bool
+	Cdata     bool
+	OmitEmpty bool
+	Attribs   []xmlAttrib
+	Children  []*xmlTree
 }
 
 type xmlAttrib struct {
@@ -138,6 +139,10 @@ func (b *builder) buildFromElement(e xsdElement) *xmlTree {
 
 	if e.isList() {
 		xelem.List = true
+	}
+
+	if e.omittable() {
+		xelem.OmitEmpty = true
 	}
 
 	if !e.inlineType() {
@@ -269,6 +274,7 @@ func (b *builder) buildFromAttributes(xelem *xmlTree, attrs []xsdAttribute) {
 			// that now
 			attr.Type = t
 		}
+
 		xelem.Attribs = append(xelem.Attribs, attr)
 	}
 }

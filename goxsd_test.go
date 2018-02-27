@@ -122,10 +122,11 @@ type title struct {
 				Type: "tagList",
 				Children: []*xmlTree{
 					&xmlTree{
-						Name:  "tag",
-						Type:  "string",
-						List:  true,
-						Cdata: true,
+						Name:      "tag",
+						Type:      "string",
+						List:      true,
+						Cdata:     true,
+						OmitEmpty: true,
 						Attribs: []xmlAttrib{
 							{Name: "type", Type: "string"},
 						},
@@ -134,7 +135,7 @@ type title struct {
 			},
 			gosrc: `
 type tagList struct {
-	Tag []tag ` + "`xml:\"tag\"`" + `
+	Tag []tag ` + "`xml:\"tag,omitempty\"`" + `
 }
 
 type tag struct {
