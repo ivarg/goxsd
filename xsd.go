@@ -99,6 +99,10 @@ func (e xsdElement) isList() bool {
 	return e.Max == "unbounded"
 }
 
+func (e xsdElement) omittable() bool {
+	return e.Min == "0"
+}
+
 func (e xsdElement) inlineType() bool {
 	return e.Type == ""
 }
