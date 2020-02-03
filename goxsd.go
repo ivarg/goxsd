@@ -296,7 +296,7 @@ func (b *builder) findType(name string) interface{} {
 		return "int"
 	case "unsignedShort":
 		return "uint16"
-	case "decimal":
+	case "decimal","double":
 		return "float64"
 	case "dateTime":
 		return "time.Time"
