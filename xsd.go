@@ -31,6 +31,9 @@ func makeCharsetReader(charset string, input io.Reader) (io.Reader, error) {
 	if charset == "Windows-1252" {
 		return charmap.Windows1252.NewDecoder().Reader(input), nil
 	}
+	if charset === "iso-8859-1" {
+		return charmap.ISO8859_1.NewDecoder().Reader(input), nil
+	}
 	return nil, fmt.Errorf("Unknown charset: %s", charset)
 }
 
